@@ -1,0 +1,1221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DMS Wyzard — Éditeur</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --surface: #161920;
+      --surface2: #1e2230;
+      --border: #2a2f3f;
+      --border2: #363c52;
+      --ink: #e8eaf0;
+      --muted: #6b7394;
+      --accent: #4f7cff;
+      --accent-dim: rgba(79,124,255,.12);
+      --accent-glow: rgba(79,124,255,.25);
+      --green: #2dd4a0;
+      --green-dim: rgba(45,212,160,.12);
+      --red: #ff5f5f;
+      --red-dim: rgba(255,95,95,.12);
+      --yellow: #fbbf24;
+      --yellow-dim: rgba(251,191,36,.1);
+      --radius: 10px;
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(13,15,20,.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 16px;
+      padding: 0 24px;
+      height: 52px;
+    }
+    .topbar-logo {
+      font-family: var(--font-head);
+      font-weight: 800;
+      font-size: 16px;
+      letter-spacing: -.3px;
+      color: var(--ink);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .topbar-logo .dot { color: var(--accent); }
+    .topbar-badge {
+      font-size: 10px; font-weight: 600;
+      padding: 2px 8px; border-radius: 999px;
+      background: var(--accent-dim); color: var(--accent);
+      border: 1px solid var(--accent-glow);
+      font-family: var(--font-mono);
+      letter-spacing: .06em;
+    }
+    .topbar-spacer { flex: 1; }
+    .topbar-status {
+      font-size: 12px; font-family: var(--font-mono);
+      color: var(--muted); display: flex; align-items: center; gap: 6px;
+    }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--muted);
+      transition: background .3s;
+    }
+    .status-dot.ok { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.err { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    .status-dot.busy { background: var(--yellow); animation: blink 1s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+    /* ── Layout ── */
+    .layout { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 52px); }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      position: sticky; top: 52px;
+      height: calc(100vh - 52px);
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .sidebar-section {
+      padding: 0 16px;
+      margin-bottom: 4px;
+    }
+    .sidebar-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: .1em; text-transform: uppercase;
+      color: var(--muted); padding: 0 8px;
+      margin-bottom: 6px; display: block;
+    }
+    .nav-btn {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; padding: 9px 10px;
+      border-radius: 8px; border: none;
+      background: transparent; color: var(--muted);
+      font-family: var(--font-body); font-size: 13px; font-weight: 500;
+      cursor: pointer; text-align: left;
+      transition: background .15s, color .15s;
+    }
+    .nav-btn:hover { background: var(--surface2); color: var(--ink); }
+    .nav-btn.active { background: var(--accent-dim); color: var(--accent); }
+    .nav-btn .nav-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: .7; }
+    .nav-btn.active .nav-icon { opacity: 1; }
+    .nav-count {
+      margin-left: auto;
+      font-family: var(--font-mono); font-size: 11px;
+      background: var(--surface2); color: var(--muted);
+      padding: 1px 7px; border-radius: 999px;
+    }
+    .nav-btn.active .nav-count { background: var(--accent-dim); color: var(--accent); }
+
+    .sidebar-sep { border: none; border-top: 1px solid var(--border); margin: 8px 16px; }
+
+    /* ── Main content ── */
+    .main { padding: 28px 32px; overflow-y: auto; }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── Section title ── */
+    .section-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px; flex-wrap: wrap; gap: 10px;
+    }
+    .section-title {
+      font-family: var(--font-head); font-size: 20px; font-weight: 700;
+      letter-spacing: -.3px; color: var(--ink);
+    }
+    .section-sub {
+      font-size: 12px; color: var(--muted); margin-top: 2px;
+    }
+
+    /* ── Boutons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border2);
+      background: var(--surface2); color: var(--ink);
+      font-family: var(--font-body); font-size: 13px; font-weight: 500;
+      cursor: pointer; transition: all .15s; text-decoration: none;
+    }
+    .btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #3d6be8; }
+    .btn.danger { border-color: var(--red-dim); color: var(--red); background: var(--red-dim); }
+    .btn.danger:hover { background: rgba(255,95,95,.2); }
+    .btn.success { border-color: var(--green-dim); color: var(--green); background: var(--green-dim); }
+    .btn.success:hover { background: rgba(45,212,160,.2); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; pointer-events: none; }
+    .btn.sm { padding: 5px 10px; font-size: 12px; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      background: var(--surface);
+      font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+      color: var(--muted); text-align: left; padding: 10px 14px;
+      border-bottom: 1px solid var(--border); white-space: nowrap;
+    }
+    td {
+      padding: 10px 14px; border-bottom: 1px solid var(--border);
+      font-size: 13px; color: var(--ink); vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface); }
+
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; font-family: var(--font-mono);
+    }
+    .badge.y { background: var(--green-dim); color: var(--green); }
+    .badge.n { background: var(--red-dim); color: var(--red); }
+    .badge.any { background: var(--accent-dim); color: var(--accent); }
+    .badge.na { background: var(--surface2); color: var(--muted); }
+    .badge.product { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent-glow); }
+
+    /* ── Formulaire ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-grid.thirds { grid-template-columns: 1fr 1fr 1fr; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    label.field-label {
+      font-size: 11px; font-weight: 700; letter-spacing: .07em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    input[type=text], select, textarea {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--ink);
+      font-family: var(--font-body); font-size: 13px;
+      padding: 9px 12px; transition: border-color .15s;
+      width: 100%;
+    }
+    input[type=text]:focus, select:focus, textarea:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-dim);
+    }
+    textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+    select option { background: var(--surface2); }
+
+    /* radio custom */
+    .radio-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .radio-opt {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 12px; border-radius: 8px;
+      border: 1px solid var(--border2); cursor: pointer;
+      font-size: 13px; font-weight: 500; color: var(--muted);
+      transition: all .15s; user-select: none;
+    }
+    .radio-opt input { display: none; }
+    .radio-opt:has(input:checked),
+    .radio-opt.checked { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .radio-opt:hover { border-color: var(--border2); color: var(--ink); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 16px;
+      width: min(740px, 95vw);
+      max-height: 90vh;
+      overflow-y: auto;
+      transform: translateY(12px);
+      transition: transform .2s;
+      box-shadow: 0 24px 80px rgba(0,0,0,.5);
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; background: var(--surface); z-index: 1;
+    }
+    .modal-title { font-family: var(--font-head); font-size: 17px; font-weight: 700; }
+    .modal-body { padding: 20px 24px; }
+    .modal-foot {
+      display: flex; justify-content: flex-end; gap: 10px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      position: sticky; bottom: 0; background: var(--surface); z-index: 1;
+    }
+    .close-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      padding: 4px; border-radius: 6px; display: flex; align-items: center;
+      transition: color .15s;
+    }
+    .close-btn:hover { color: var(--ink); }
+
+    /* ── Connexion GitHub ── */
+    .connect-card {
+      max-width: 480px; margin: 60px auto;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 16px; padding: 36px;
+      text-align: center;
+    }
+    .connect-icon {
+      width: 56px; height: 56px;
+      background: var(--accent-dim); border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      border: 1px solid var(--accent-glow);
+    }
+    .connect-card h2 { font-family: var(--font-head); font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+    .connect-card p { color: var(--muted); font-size: 13px; margin-bottom: 24px; line-height: 1.7; }
+    .connect-form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+    .connect-help {
+      font-size: 12px; color: var(--muted); margin-top: 4px; text-align: center;
+    }
+    .connect-help a { color: var(--accent); text-decoration: none; }
+    .connect-help a:hover { text-decoration: underline; }
+
+    /* ── Toast ── */
+    .toast-wrap {
+      position: fixed; bottom: 24px; right: 24px; z-index: 300;
+      display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+    }
+    .toast {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; border-radius: 10px;
+      font-size: 13px; font-weight: 500;
+      background: var(--surface2); border: 1px solid var(--border2);
+      box-shadow: 0 8px 32px rgba(0,0,0,.4);
+      animation: slideIn .2s ease; max-width: 340px;
+    }
+    .toast.ok { border-color: var(--green-dim); }
+    .toast.err { border-color: var(--red-dim); }
+    .toast.info { border-color: var(--accent-glow); }
+    @keyframes slideIn { from{transform:translateX(20px);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes fadeOut { to{opacity:0;transform:translateX(20px)} }
+    .toast.dying { animation: fadeOut .2s ease forwards; }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center; padding: 48px 24px;
+      color: var(--muted); font-size: 13px;
+    }
+    .empty svg { opacity: .3; margin-bottom: 12px; }
+
+    /* ── Connexion GitHub setup ── */
+    #setupPage { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 52px); }
+
+    /* ── Commit log ── */
+    .commit-item {
+      display: flex; gap: 14px; padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .commit-item:last-child { border-bottom: none; }
+    .commit-sha {
+      font-family: var(--font-mono); font-size: 11px;
+      color: var(--accent); background: var(--accent-dim);
+      padding: 2px 7px; border-radius: 6px; flex-shrink: 0;
+      align-self: flex-start; margin-top: 2px;
+    }
+    .commit-msg { font-size: 13px; color: var(--ink); }
+    .commit-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Settings ── */
+    .settings-grid { display: grid; gap: 12px; max-width: 540px; }
+    .setting-row {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 16px; gap: 16px;
+    }
+    .setting-row .setting-info { flex: 1; }
+    .setting-row .setting-label { font-size: 13px; font-weight: 600; }
+    .setting-row .setting-desc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .setting-val { font-family: var(--font-mono); font-size: 12px; color: var(--accent); }
+
+    /* ── Filtre ── */
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+    .filter-bar input[type=text] { max-width: 240px; }
+    .filter-tag {
+      padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border2);
+      background: var(--surface); font-size: 12px; font-weight: 600;
+      cursor: pointer; color: var(--muted); transition: all .15s;
+    }
+    .filter-tag:hover, .filter-tag.active {
+      border-color: var(--accent); color: var(--accent); background: var(--accent-dim);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<header class="topbar">
+  <div class="topbar-logo">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+    </svg>
+    DMS Wyzard <span class="dot">·</span> Éditeur
+  </div>
+  <span class="topbar-badge">ADMIN</span>
+  <div class="topbar-spacer"></div>
+  <div class="topbar-status" id="statusBar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Non connecté</span>
+  </div>
+</header>
+
+<!-- Setup / connexion -->
+<div id="setupPage">
+  <div class="connect-card">
+    <div class="connect-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4f7cff" stroke-width="2">
+        <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+      </svg>
+    </div>
+    <h2>Connexion GitHub</h2>
+    <p>Renseignez votre token GitHub et les coordonnées du repo pour commencer à éditer la base de données.</p>
+    <div class="connect-form">
+      <div class="form-group">
+        <label class="field-label">Personal Access Token</label>
+        <input type="text" id="inputToken" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="field-label">Owner (organisation ou compte)</label>
+        <input type="text" id="inputOwner" placeholder="wyz-org">
+      </div>
+      <div class="form-group">
+        <label class="field-label">Nom du repo</label>
+        <input type="text" id="inputRepo" placeholder="dms-wyzard">
+      </div>
+      <div class="form-group">
+        <label class="field-label">Branche</label>
+        <input type="text" id="inputBranch" value="main" placeholder="main">
+      </div>
+      <div class="form-group">
+        <label class="field-label">Chemin du fichier data</label>
+        <input type="text" id="inputPath" value="data.json" placeholder="data.json">
+      </div>
+      <button class="btn primary" id="btnConnect" onclick="connect()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Se connecter
+      </button>
+    </div>
+    <p class="connect-help">Token requis avec permissions <strong>repo</strong> (lecture + écriture). <a href="https://github.com/settings/tokens/new" target="_blank">Créer un token →</a></p>
+  </div>
+</div>
+
+<!-- App principale (cachée jusqu'à connexion) -->
+<div id="appShell" style="display:none">
+  <div class="layout">
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="sidebar-section">
+        <span class="sidebar-label">Navigation</span>
+        <button class="nav-btn active" onclick="showPage('rules')" id="nav-rules">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+          Règles de décision
+          <span class="nav-count" id="count-rules">0</span>
+        </button>
+        <button class="nav-btn" onclick="showPage('products')" id="nav-products">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          Produits & DMS
+          <span class="nav-count" id="count-products">0</span>
+        </button>
+        <button class="nav-btn" onclick="showPage('history')" id="nav-history">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Historique
+        </button>
+      </div>
+      <hr class="sidebar-sep">
+      <div class="sidebar-section">
+        <span class="sidebar-label">Actions</span>
+        <button class="nav-btn" onclick="pushToGitHub()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Sauvegarder
+        </button>
+        <button class="nav-btn" onclick="showPage('settings')" id="nav-settings">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          Paramètres
+        </button>
+        <button class="nav-btn" onclick="disconnect()">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Déconnexion
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main -->
+    <main class="main">
+
+      <!-- PAGE : Règles de décision -->
+      <div class="page active" id="page-rules">
+        <div class="section-head">
+          <div>
+            <div class="section-title">Règles de décision</div>
+            <div class="section-sub">Table de matching produit × DMS × critères → procédure</div>
+          </div>
+          <button class="btn primary" onclick="openRuleModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nouvelle règle
+          </button>
+        </div>
+
+        <div class="filter-bar">
+          <input type="text" id="filterRules" placeholder="Rechercher…" oninput="renderRulesTable()">
+          <div id="productFilters"></div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th>DMS</th>
+                <th>Redistrib.</th>
+                <th>Interface existante</th>
+                <th>Prix B2B</th>
+                <th>Référence</th>
+                <th>Coût WYZ</th>
+                <th>Coût DMS</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="rulesBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PAGE : Produits & DMS -->
+      <div class="page" id="page-products">
+        <div class="section-head">
+          <div>
+            <div class="section-title">Produits & DMS</div>
+            <div class="section-sub">Quels DMS sont disponibles pour chaque produit</div>
+          </div>
+          <button class="btn primary" onclick="openProductModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Ajouter une entrée
+          </button>
+        </div>
+
+        <div id="productsGrid" style="display:grid;gap:16px;"></div>
+      </div>
+
+      <!-- PAGE : Historique -->
+      <div class="page" id="page-history">
+        <div class="section-head">
+          <div>
+            <div class="section-title">Historique des commits</div>
+            <div class="section-sub">Les 20 dernières modifications du fichier data.json</div>
+          </div>
+          <button class="btn" onclick="loadHistory()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.01"/></svg>
+            Rafraîchir
+          </button>
+        </div>
+        <div id="historyList"></div>
+      </div>
+
+      <!-- PAGE : Paramètres -->
+      <div class="page" id="page-settings">
+        <div class="section-head">
+          <div><div class="section-title">Paramètres</div></div>
+        </div>
+        <div class="settings-grid" id="settingsGrid"></div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- Modal règle -->
+<div class="modal-overlay" id="ruleModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="ruleModalTitle">Nouvelle règle</div>
+      <button class="close-btn" onclick="closeModal('ruleModal')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid thirds" style="margin-bottom:16px">
+        <div class="form-group">
+          <label class="field-label">Produit *</label>
+          <select id="fProduct"></select>
+        </div>
+        <div class="form-group">
+          <label class="field-label">DMS *</label>
+          <select id="fDMS"></select>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Coût WYZ</label>
+          <input type="text" id="fCost" placeholder="Inclus dans le Setup">
+        </div>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:16px">
+        <div class="form-group">
+          <label class="field-label">Coût DMS</label>
+          <input type="text" id="fDMSCost" placeholder="Pas de coût DMS">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Mise à jour</label>
+          <input type="text" id="fLastUpdated" placeholder="2025-01">
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div class="form-group">
+          <label class="field-label">Redistribution</label>
+          <div class="radio-group" id="rRedist"></div>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Interface existante</label>
+          <div class="radio-group" id="rExisting"></div>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Prix B2B dans DMS</label>
+          <div class="radio-group" id="rB2B"></div>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Référence</label>
+          <div class="radio-group" id="rRef"></div>
+        </div>
+      </div>
+
+      <div class="form-grid" style="margin-bottom:16px">
+        <div class="form-group full">
+          <label class="field-label">Méthodologie</label>
+          <textarea id="fMethodology" placeholder="1) Étape une&#10;2) Étape deux&#10;3) Tester"></textarea>
+        </div>
+        <div class="form-group full">
+          <label class="field-label">Ce que permet l'interface (Capability)</label>
+          <textarea id="fCapability" placeholder="Remontée tarifs B2B & référencement produits" style="min-height:54px"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="field-label">Lien cahier des charges (WYZ)</label>
+          <input type="text" id="fSpecLink" placeholder="https://…">
+        </div>
+        <div class="form-group">
+          <label class="field-label">Formulaire DMS</label>
+          <input type="text" id="fReqLink" placeholder="https://…">
+        </div>
+        <div class="form-group full">
+          <label class="field-label">Notes</label>
+          <input type="text" id="fNotes" placeholder="Remarques éventuelles…">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('ruleModal')">Annuler</button>
+      <button class="btn primary" onclick="saveRule()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal produit/DMS -->
+<div class="modal-overlay" id="productModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <div class="modal-title">Ajouter un DMS à un produit</div>
+      <button class="close-btn" onclick="closeModal('productModal')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="grid-template-columns:1fr 1fr">
+        <div class="form-group">
+          <label class="field-label">Produit</label>
+          <select id="fpProduct"><option value="__new__">+ Nouveau produit</option></select>
+        </div>
+        <div class="form-group" id="newProductGroup" style="display:none">
+          <label class="field-label">Nom du nouveau produit</label>
+          <input type="text" id="fpNewProduct" placeholder="EX: WTX">
+        </div>
+        <div class="form-group full">
+          <label class="field-label">DMS</label>
+          <input type="text" id="fpDMS" placeholder="Nom exact du DMS">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal('productModal')">Annuler</button>
+      <button class="btn primary" onclick="saveProductDMS()">Ajouter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+let cfg = {};   // { token, owner, repo, branch, path }
+let data = {
+  products: [],
+  dmsByProduct: {},
+  applicabilityByProduct: {},
+  decisionRowsLite: []
+};
+let fileSha = null;      // SHA du fichier sur GitHub (requis pour PUT)
+let editingRuleIdx = null;
+let dirty = false;
+
+/* ============================================================
+   CONNEXION / INIT
+   ============================================================ */
+function loadCfg() {
+  try { return JSON.parse(localStorage.getItem('wyzard_cfg') || '{}'); } catch(e) { return {}; }
+}
+function saveCfg(c) { localStorage.setItem('wyzard_cfg', JSON.stringify(c)); }
+
+async function connect() {
+  const token  = document.getElementById('inputToken').value.trim();
+  const owner  = document.getElementById('inputOwner').value.trim();
+  const repo   = document.getElementById('inputRepo').value.trim();
+  const branch = document.getElementById('inputBranch').value.trim() || 'main';
+  const path   = document.getElementById('inputPath').value.trim() || 'data.json';
+
+  if (!token || !owner || !repo) { toast('Renseignez tous les champs obligatoires.', 'err'); return; }
+
+  cfg = { token, owner, repo, branch, path };
+  setStatus('busy', 'Connexion…');
+
+  const ok = await loadData();
+  if (ok) {
+    saveCfg(cfg);
+    document.getElementById('setupPage').style.display = 'none';
+    document.getElementById('appShell').style.display = '';
+    setStatus('ok', `${owner}/${repo}`);
+    toast('Connecté — données chargées ✓', 'ok');
+    renderAll();
+  }
+}
+
+async function loadData() {
+  try {
+    const res = await ghGet(`contents/${cfg.path}?ref=${cfg.branch}`);
+    if (!res.ok) { throw new Error(`HTTP ${res.status}`); }
+    const json = await res.json();
+    fileSha = json.sha;
+    data = JSON.parse(atob(json.content.replace(/\n/g, '')));
+    return true;
+  } catch(e) {
+    toast('Impossible de charger le fichier : ' + e.message, 'err');
+    setStatus('err', 'Erreur');
+    return false;
+  }
+}
+
+function disconnect() {
+  localStorage.removeItem('wyzard_cfg');
+  location.reload();
+}
+
+/* ============================================================
+   API GITHUB
+   ============================================================ */
+function ghGet(endpoint) {
+  return fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/${endpoint}`, {
+    headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json' }
+  });
+}
+
+async function pushToGitHub() {
+  setStatus('busy', 'Sauvegarde…');
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+  const now = new Date().toISOString().slice(0,16).replace('T',' ');
+  const body = {
+    message: `chore: mise à jour DMS Wyzard (${now})`,
+    content,
+    branch: cfg.branch,
+    ...(fileSha ? { sha: fileSha } : {})
+  };
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${cfg.path}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${cfg.token}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.message || `HTTP ${res.status}`);
+    }
+    const json = await res.json();
+    fileSha = json.content.sha;
+    dirty = false;
+    setStatus('ok', `${cfg.owner}/${cfg.repo}`);
+    toast('Sauvegardé sur GitHub ✓', 'ok');
+  } catch(e) {
+    setStatus('err', 'Erreur de sauvegarde');
+    toast('Erreur : ' + e.message, 'err');
+  }
+}
+
+async function loadHistory() {
+  const el = document.getElementById('historyList');
+  el.innerHTML = '<p style="color:var(--muted);font-size:13px">Chargement…</p>';
+  try {
+    const res = await ghGet(`commits?path=${cfg.path}&per_page=20`);
+    const commits = await res.json();
+    if (!commits.length) { el.innerHTML = '<div class="empty"><p>Aucun commit trouvé.</p></div>'; return; }
+    el.innerHTML = commits.map(c => `
+      <div class="commit-item">
+        <span class="commit-sha">${c.sha.slice(0,7)}</span>
+        <div>
+          <div class="commit-msg">${esc(c.commit.message)}</div>
+          <div class="commit-meta">${esc(c.commit.author.name)} · ${new Date(c.commit.author.date).toLocaleString('fr')}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch(e) {
+    el.innerHTML = `<p style="color:var(--red)">Erreur : ${esc(e.message)}</p>`;
+  }
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function renderAll() {
+  renderRulesTable();
+  renderProductsPage();
+  renderProductFilters();
+  renderSettings();
+  updateCounts();
+}
+
+function updateCounts() {
+  document.getElementById('count-rules').textContent = data.decisionRowsLite.length;
+  document.getElementById('count-products').textContent =
+    Object.values(data.dmsByProduct).reduce((s,a) => s + a.length, 0);
+}
+
+/* ── Rules table ── */
+function renderRulesTable() {
+  const q = (document.getElementById('filterRules')?.value || '').toLowerCase();
+  const activeFilters = [...document.querySelectorAll('.filter-tag.active')].map(t => t.dataset.product);
+
+  const rows = data.decisionRowsLite.filter(r => {
+    if (activeFilters.length && !activeFilters.includes(r.Product)) return false;
+    if (!q) return true;
+    return [r.Product, r.DMS, r.Cost, r.DMSCost, r.Methodology, r.Capability]
+      .some(v => (v||'').toLowerCase().includes(q));
+  });
+
+  const tbody = document.getElementById('rulesBody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty"><p>Aucune règle trouvée.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map((r, i) => {
+    const realIdx = data.decisionRowsLite.indexOf(r);
+    return `<tr>
+      <td><span class="badge product">${esc(r.Product)}</span></td>
+      <td>${esc(r.DMS)}</td>
+      <td>${badgeYN(r.RedistributionNeeded)}</td>
+      <td>${badgeYN(r.ExistingInterface)}</td>
+      <td>${badgeYN(r.B2BPricingInDMS)}</td>
+      <td>${badgeYN(r.ReferenceUsage)}</td>
+      <td style="font-size:12px;color:var(--muted)">${esc(r.Cost||'—')}</td>
+      <td style="font-size:12px;color:var(--muted)">${esc(r.DMSCost||'—')}</td>
+      <td style="white-space:nowrap">
+        <button class="btn sm" onclick="openRuleModal(${realIdx})">Éditer</button>
+        <button class="btn sm danger" style="margin-left:4px" onclick="deleteRule(${realIdx})">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function badgeYN(v) {
+  if (v === null || v === undefined) return '<span class="badge na">—</span>';
+  const u = (v||'').toUpperCase();
+  if (u === 'Y') return '<span class="badge y">OUI</span>';
+  if (u === 'N') return '<span class="badge n">NON</span>';
+  if (u === 'ANY') return '<span class="badge any">ANY</span>';
+  return `<span class="badge any">${esc(v)}</span>`;
+}
+
+function renderProductFilters() {
+  const container = document.getElementById('productFilters');
+  if (!container) return;
+  container.innerHTML = data.products.map(p =>
+    `<button class="filter-tag" data-product="${p}" onclick="toggleFilter(this)">${p}</button>`
+  ).join('');
+}
+
+function toggleFilter(btn) {
+  btn.classList.toggle('active');
+  renderRulesTable();
+}
+
+/* ── Products page ── */
+function renderProductsPage() {
+  const grid = document.getElementById('productsGrid');
+  grid.innerHTML = data.products.map(p => {
+    const dmsList = data.dmsByProduct[p] || [];
+    const ap = data.applicabilityByProduct[p] || {};
+    return `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span class="badge product" style="font-size:14px;padding:4px 12px">${esc(p)}</span>
+            <span style="font-size:12px;color:var(--muted)">${dmsList.length} DMS</span>
+          </div>
+          <button class="btn sm danger" onclick="deleteProduct('${p}')">Supprimer produit</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+          ${dmsList.map(d => `
+            <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;border:1px solid var(--border2);font-size:12px;font-weight:500">
+              ${esc(d)}
+              <button onclick="deleteDMS('${p}','${d}')" style="background:none;border:none;color:var(--muted);cursor:pointer;padding:0;line-height:1;font-size:14px" title="Supprimer">×</button>
+            </span>
+          `).join('')}
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:12px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Questions affichées dans le wizard</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            ${apToggle(p,'askRedistribution','Redistribution')}
+            ${apToggle(p,'askExistingInterface','Interface existante')}
+            ${apToggle(p,'askB2BPricing','Prix B2B')}
+            ${apToggle(p,'askReferenceUsage','Référence')}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function apToggle(product, key, label) {
+  const val = data.applicabilityByProduct[product]?.[key] || false;
+  const cls = val ? 'badge y' : 'badge na';
+  return `<button class="${cls}" style="cursor:pointer;border:none;font-family:inherit;font-size:11px"
+    onclick="toggleApplicability('${product}','${key}')">${label}: ${val?'✓':'–'}</button>`;
+}
+
+function toggleApplicability(product, key) {
+  if (!data.applicabilityByProduct[product]) data.applicabilityByProduct[product] = {};
+  data.applicabilityByProduct[product][key] = !data.applicabilityByProduct[product][key];
+  dirty = true;
+  renderProductsPage();
+}
+
+/* ── Settings ── */
+function renderSettings() {
+  document.getElementById('settingsGrid').innerHTML = `
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Repository</div>
+        <div class="setting-desc">Dépôt GitHub connecté</div>
+      </div>
+      <span class="setting-val">${esc(cfg.owner)}/${esc(cfg.repo)}</span>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Branche</div>
+        <div class="setting-desc">Branche cible pour les commits</div>
+      </div>
+      <span class="setting-val">${esc(cfg.branch)}</span>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Fichier de données</div>
+        <div class="setting-desc">Chemin dans le repo</div>
+      </div>
+      <span class="setting-val">${esc(cfg.path)}</span>
+    </div>
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Token</div>
+        <div class="setting-desc">Personal Access Token stocké localement</div>
+      </div>
+      <span class="setting-val">${cfg.token ? cfg.token.slice(0,8)+'…' : '—'}</span>
+    </div>
+    <div style="margin-top:8px">
+      <button class="btn danger" onclick="disconnect()">Se déconnecter et effacer</button>
+    </div>
+  `;
+}
+
+/* ============================================================
+   MODAL RÈGLE
+   ============================================================ */
+const YN_OPTIONS = [
+  { value: null, label: '—' },
+  { value: 'Y', label: 'Oui' },
+  { value: 'N', label: 'Non' },
+  { value: 'ANY', label: 'ANY' },
+];
+
+function buildRadioGroup(containerId, currentVal) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = YN_OPTIONS.map(o => `
+    <label class="radio-opt ${(o.value === currentVal || (o.value === null && currentVal === null)) ? 'checked' : ''}"
+      onclick="selectRadio(this, '${containerId}')">
+      <input type="radio" name="${containerId}" value="${o.value === null ? '__null__' : o.value}"
+        ${(o.value === currentVal || (o.value === null && currentVal === null)) ? 'checked' : ''}>
+      ${o.label}
+    </label>
+  `).join('');
+}
+
+function selectRadio(label, groupId) {
+  document.querySelectorAll(`#${groupId} .radio-opt`).forEach(l => l.classList.remove('checked'));
+  label.classList.add('checked');
+}
+
+function getRadioVal(groupId) {
+  const el = document.querySelector(`#${groupId} input:checked`);
+  if (!el) return null;
+  return el.value === '__null__' ? null : el.value;
+}
+
+function openRuleModal(idx = null) {
+  editingRuleIdx = idx;
+  const r = idx !== null ? data.decisionRowsLite[idx] : {};
+
+  document.getElementById('ruleModalTitle').textContent = idx !== null ? 'Modifier la règle' : 'Nouvelle règle';
+
+  // Produit select
+  const fProduct = document.getElementById('fProduct');
+  fProduct.innerHTML = data.products.map(p => `<option ${r.Product===p?'selected':''}>${p}</option>`).join('');
+
+  // DMS select (dépend du produit courant)
+  updateDMSSelect(r.Product || data.products[0], r.DMS);
+  fProduct.onchange = () => updateDMSSelect(fProduct.value, null);
+
+  document.getElementById('fCost').value = r.Cost || '';
+  document.getElementById('fDMSCost').value = r.DMSCost || '';
+  document.getElementById('fLastUpdated').value = r.LastUpdated || '';
+  document.getElementById('fMethodology').value = r.Methodology || '';
+  document.getElementById('fCapability').value = r.Capability || '';
+  document.getElementById('fSpecLink').value = r.SpecificationLink || '';
+  document.getElementById('fReqLink').value = r.RequestFormLink || '';
+  document.getElementById('fNotes').value = r.Notes || '';
+
+  buildRadioGroup('rRedist', r.RedistributionNeeded ?? null);
+  buildRadioGroup('rExisting', r.ExistingInterface ?? null);
+  buildRadioGroup('rB2B', r.B2BPricingInDMS ?? null);
+  buildRadioGroup('rRef', r.ReferenceUsage ?? null);
+
+  openModal('ruleModal');
+}
+
+function updateDMSSelect(product, currentDMS) {
+  const sel = document.getElementById('fDMS');
+  const list = data.dmsByProduct[product] || [];
+  sel.innerHTML = list.map(d => `<option ${d===currentDMS?'selected':''}>${d}</option>`).join('');
+}
+
+function saveRule() {
+  const rule = {
+    Product: document.getElementById('fProduct').value,
+    DMS: document.getElementById('fDMS').value,
+    RedistributionNeeded: getRadioVal('rRedist'),
+    ExistingInterface: getRadioVal('rExisting'),
+    B2BPricingInDMS: getRadioVal('rB2B'),
+    ReferenceUsage: getRadioVal('rRef'),
+    Cost: document.getElementById('fCost').value.trim() || null,
+    DMSCost: document.getElementById('fDMSCost').value.trim() || null,
+    Methodology: document.getElementById('fMethodology').value.trim() || null,
+    Capability: document.getElementById('fCapability').value.trim() || null,
+    SpecificationLink: document.getElementById('fSpecLink').value.trim() || null,
+    RequestFormLink: document.getElementById('fReqLink').value.trim() || null,
+    Notes: document.getElementById('fNotes').value.trim() || null,
+    LastUpdated: document.getElementById('fLastUpdated').value.trim() || null,
+  };
+
+  if (!rule.Product || !rule.DMS) { toast('Produit et DMS obligatoires.', 'err'); return; }
+
+  if (editingRuleIdx !== null) {
+    data.decisionRowsLite[editingRuleIdx] = rule;
+    toast('Règle mise à jour.', 'ok');
+  } else {
+    data.decisionRowsLite.push(rule);
+    toast('Règle ajoutée.', 'ok');
+  }
+
+  dirty = true;
+  closeModal('ruleModal');
+  renderRulesTable();
+  updateCounts();
+}
+
+function deleteRule(idx) {
+  if (!confirm('Supprimer cette règle ?')) return;
+  data.decisionRowsLite.splice(idx, 1);
+  dirty = true;
+  renderRulesTable();
+  updateCounts();
+  toast('Règle supprimée.', 'info');
+}
+
+/* ============================================================
+   MODAL PRODUIT / DMS
+   ============================================================ */
+function openProductModal() {
+  const sel = document.getElementById('fpProduct');
+  sel.innerHTML = `<option value="__new__">+ Nouveau produit</option>` +
+    data.products.map(p => `<option value="${p}">${p}</option>`).join('');
+  sel.onchange = () => {
+    document.getElementById('newProductGroup').style.display =
+      sel.value === '__new__' ? '' : 'none';
+  };
+  openModal('productModal');
+}
+
+function saveProductDMS() {
+  const sel = document.getElementById('fpProduct');
+  const dms = document.getElementById('fpDMS').value.trim();
+  if (!dms) { toast('Renseignez le nom du DMS.', 'err'); return; }
+
+  let product = sel.value;
+  if (product === '__new__') {
+    product = document.getElementById('fpNewProduct').value.trim().toUpperCase();
+    if (!product) { toast('Renseignez le nom du produit.', 'err'); return; }
+    if (!data.products.includes(product)) {
+      data.products.push(product);
+      data.dmsByProduct[product] = [];
+      data.applicabilityByProduct[product] = {
+        askRedistribution: false, askExistingInterface: false,
+        askB2BPricing: false, askReferenceUsage: false
+      };
+    }
+  }
+
+  if (!data.dmsByProduct[product]) data.dmsByProduct[product] = [];
+  if (data.dmsByProduct[product].includes(dms)) {
+    toast('Ce DMS existe déjà pour ce produit.', 'err'); return;
+  }
+  data.dmsByProduct[product].push(dms);
+  dirty = true;
+  closeModal('productModal');
+  renderAll();
+  toast('DMS ajouté.', 'ok');
+}
+
+function deleteDMS(product, dms) {
+  if (!confirm(`Supprimer "${dms}" du produit ${product} ?`)) return;
+  data.dmsByProduct[product] = data.dmsByProduct[product].filter(d => d !== dms);
+  dirty = true;
+  renderProductsPage();
+  updateCounts();
+  toast('DMS supprimé.', 'info');
+}
+
+function deleteProduct(product) {
+  const rulesCount = data.decisionRowsLite.filter(r => r.Product === product).length;
+  if (!confirm(`Supprimer le produit "${product}" et ses ${rulesCount} règle(s) associées ?`)) return;
+  data.products = data.products.filter(p => p !== product);
+  delete data.dmsByProduct[product];
+  delete data.applicabilityByProduct[product];
+  data.decisionRowsLite = data.decisionRowsLite.filter(r => r.Product !== product);
+  dirty = true;
+  renderAll();
+  toast(`Produit ${product} supprimé.`, 'info');
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(`page-${id}`).classList.add('active');
+  document.getElementById(`nav-${id}`)?.classList.add('active');
+  if (id === 'history') loadHistory();
+}
+
+/* ============================================================
+   MODAL UTILS
+   ============================================================ */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(el =>
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); })
+);
+
+/* ============================================================
+   STATUS & TOASTS
+   ============================================================ */
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'status-dot ' + state;
+  txt.textContent = text;
+}
+
+function toast(msg, type = 'info') {
+  const wrap = document.getElementById('toastWrap');
+  const icons = { ok: '✓', err: '✕', info: 'ℹ' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span style="font-size:14px">${icons[type]||'·'}</span> ${esc(msg)}`;
+  wrap.appendChild(el);
+  setTimeout(() => { el.classList.add('dying'); setTimeout(() => el.remove(), 200); }, 3000);
+}
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ============================================================
+   AUTO-RECONNECT au chargement
+   ============================================================ */
+window.addEventListener('DOMContentLoaded', () => {
+  const saved = loadCfg();
+  if (saved.token && saved.owner && saved.repo) {
+    cfg = saved;
+    ['inputToken','inputOwner','inputRepo','inputBranch','inputPath'].forEach(id => {
+      const key = id.replace('input','').toLowerCase();
+      const map = { token:'token', owner:'owner', repo:'repo', branch:'branch', path:'path' };
+      document.getElementById(id).value = cfg[map[key]] || '';
+    });
+    setStatus('busy', 'Reconnexion…');
+    loadData().then(ok => {
+      if (ok) {
+        document.getElementById('setupPage').style.display = 'none';
+        document.getElementById('appShell').style.display = '';
+        setStatus('ok', `${cfg.owner}/${cfg.repo}`);
+        renderAll();
+      }
+    });
+  }
+
+  // Warn before leaving with unsaved changes
+  window.addEventListener('beforeunload', e => {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+});
+</script>
+</body>
+</html>
