@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DMS Wyzard – WYZ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #0F62C7;
+      --primary-dark: #0A4A96;
+      --primary-light: #e6eefc;
+      --bg: #f4f7fb;
+      --card: #fff;
+      --ink: #0A1A2F;
+      --muted: #667085;
+      --border: #dce3ee;
+      --success: #12b669;
+      --purple: #7c3aed;
+      --purple-light: #ede9fe;
+      --radius: 14px;
+      --shadow: 0 2px 16px rgba(10,26,47,.07);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    html, body {
+      margin: 0; padding: 0;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ── */
+    .shell {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 28px;
+    }
+    .logo-badge {
+      width: 44px; height: 44px;
+      background: var(--primary);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .logo-badge svg { width: 24px; height: 24px; }
+    .site-header h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    .site-header p {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    /* ── Wizard steps ── */
+    .steps { display: grid; gap: 0; }
+
+    .step {
+      display: grid;
+      grid-template-columns: 28px 1fr;
+      gap: 0 14px;
+      padding: 18px 0;
+      border-bottom: 1px solid var(--bg);
+      transition: opacity .2s;
+    }
+    .step:last-child { border-bottom: none; }
+    .step.hidden { display: none; }
+
+    .step-num {
+      width: 28px; height: 28px;
+      background: var(--primary-light);
+      color: var(--primary);
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+      flex-shrink: 0;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .step-body {}
+
+    .q-label {
+      font-weight: 600;
+      font-size: 14px;
+      display: block;
+      margin-bottom: 10px;
+      color: var(--ink);
+    }
+
+    /* Choix radio "pill" */
+    .choices { display: flex; flex-wrap: wrap; gap: 8px; }
+    .choices label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color .15s, background .15s, color .15s;
+      user-select: none;
+      background: #fff;
+    }
+    .choices label:hover { border-color: var(--primary); color: var(--primary); }
+    .choices input[type=radio] { display: none; }
+    .choices input[type=radio]:checked + span,
+    .choices label:has(input:checked) {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    /* Select */
+    .select-wrap { position: relative; display: inline-block; }
+    .select-wrap::after {
+      content: "▾";
+      position: absolute;
+      right: 12px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+      font-size: 12px;
+    }
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      padding: 9px 36px 9px 12px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+      background: #fff;
+      cursor: pointer;
+      min-width: 240px;
+      transition: border-color .15s;
+    }
+    select:focus { outline: none; border-color: var(--primary); }
+    select:hover { border-color: var(--primary); }
+
+    /* ── Actions ── */
+    .actions {
+      display: flex;
+      gap: 10px;
+      padding-top: 20px;
+      margin-top: 4px;
+      border-top: 1px solid var(--bg);
+    }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 18px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      text-decoration: none;
+      background: #fff;
+      color: var(--ink);
+    }
+    .btn:hover { border-color: var(--primary); color: var(--primary); }
+    .btn.primary {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .btn.primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
+    .btn.primary:disabled { opacity: .45; cursor: not-allowed; }
+    .btn.ghost { background: var(--bg); border-color: transparent; color: var(--muted); }
+    .btn.ghost:hover { color: var(--ink); border-color: var(--border); }
+    .btn.link-pill {
+      background: var(--primary-light);
+      color: var(--primary);
+      border: none;
+      font-size: 12px;
+      padding: 6px 12px;
+    }
+    .btn.link-pill:hover { background: #d1e3fb; }
+
+    /* ── Result ── */
+    #result { display: none; }
+    #result.visible { display: block; }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .result-header h2 { margin: 0; font-size: 17px; font-weight: 600; }
+    .result-tag {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* Coûts */
+    .costs { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+    .cost-box {
+      flex: 1 1 200px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fafbff;
+    }
+    .cost-box.wyz { border-left: 4px solid var(--primary); }
+    .cost-box.dms { border-left: 4px solid var(--purple); }
+    .cost-box .cb-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .cost-box .cb-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 4px;
+      font-family: 'DM Mono', monospace;
+    }
+    .cost-box .cb-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .cost-box a {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--primary);
+      text-decoration: none;
+      display: inline-flex; align-items: center; gap: 3px;
+    }
+    .cost-box.dms a { color: var(--purple); }
+    .cost-box a:hover { text-decoration: underline; }
+
+    /* Grille méthodologie / capacité */
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media(max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
+
+    .info-block {
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+    }
+    .info-block h3 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .info-block p {
+      margin: 0;
+      font-size: 13.5px;
+      color: var(--ink);
+      line-height: 1.65;
+    }
+    .info-block p.empty {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* Meta */
+    .result-meta {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      padding-top: 12px;
+      border-top: 1px solid var(--bg);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── Spinner init ── */
+    .loading-dot {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:.3} 50%{opacity:1} }
+
+    /* ── No match ── */
+    .no-match {
+      text-align: center;
+      padding: 32px 0 16px;
+      color: var(--muted);
+    }
+    .no-match svg { opacity: .4; margin-bottom: 10px; }
+    .no-match p { margin: 0; font-size: 14px; }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- En-tête -->
+  <header class="site-header">
+    <div class="logo-badge">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div>
+      <h1>DMS Wyzard</h1>
+      <p>Guide d'intégration pas-à-pas · WTB · WTC · WF · SSM</p>
+    </div>
+  </header>
+
+  <!-- Wizard -->
+  <div class="card">
+    <div class="steps">
+
+      <!-- Q1 : Produit -->
+      <div class="step" id="q-product">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <label class="q-label">Quel produit voulez-vous déployer&nbsp;?</label>
+          <div id="productChoices" class="choices">
+            <span class="loading-dot"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q2 : DMS -->
+      <div class="step hidden" id="q-dms">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <label class="q-label">Quel DMS utilisez-vous&nbsp;?</label>
+          <div class="select-wrap">
+            <select id="dmsSelect">
+              <option value="">Sélectionnez…</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q3 : Redistribution -->
+      <div class="step hidden" id="q-redis">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <label class="q-label">Avez-vous besoin des fonctionnalités de redistribution&nbsp;?</label>
+          <div class="choices">
+            <label><input type="radio" name="redis" value="Y"><span>Oui</span></label>
+            <label><input type="radio" name="redis" value="N"><span>Non</span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q4 : Interface existante -->
+      <div class="step hidden" id="q-existing">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <label class="q-label">Avez-vous déjà une interface en place&nbsp;?</label>
+          <div class="choices">
+            <label><input type="radio" name="existing" value="Y"><span>Oui</span></label>
+            <label><input type="radio" name="existing" value="N"><span>Non</span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q5 : Prix B2B -->
+      <div class="step hidden" id="q-b2b">
+        <div class="step-num" id="num-b2b">4</div>
+        <div class="step-body">
+          <label class="q-label">Vos prix B2B sont-ils renseignés dans votre DMS&nbsp;?</label>
+          <div class="choices">
+            <label><input type="radio" name="b2b" value="Y"><span>Oui</span></label>
+            <label><input type="radio" name="b2b" value="N"><span>Non</span></label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q6 : Référence -->
+      <div class="step hidden" id="q-ref">
+        <div class="step-num" id="num-ref">5</div>
+        <div class="step-body">
+          <label class="q-label">Utilisez-vous une référence EAN, CAI ou Constructeur&nbsp;?</label>
+          <div class="choices">
+            <label><input type="radio" name="ref" value="Y"><span>Oui</span></label>
+            <label><input type="radio" name="ref" value="N"><span>Non</span></label>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /steps -->
+
+    <div class="actions">
+      <button id="btnEvaluate" class="btn primary" disabled style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Voir la procédure
+      </button>
+      <button id="btnReset" class="btn ghost">Réinitialiser</button>
+    </div>
+  </div>
+
+  <!-- Résultat -->
+  <div id="result" class="card"></div>
+
+</div><!-- /shell -->
+
+<script>
+/* ============================================================
+   DONNÉES (extraites du fichier Excel DMS_Wizard_Config.xlsx)
+   À mettre à jour ici pour faire évoluer la base de connaissance
+   ============================================================ */
+const DATA = {"products":["WTB","WTC","WF","SSM"],"dmsByProduct":{"WTB":["Nextlane I'Car","DCS","Nextlane Datacar","Autres"],"WTC":["Nextlane I'Car","DCS","Nextlane Datacar Eris","Autres"],"WF":["GAC","Autres"],"SSM":["Nextlane","DCS","Autres"]},"applicabilityByProduct":{"WTB":{"askRedistribution":true,"askExistingInterface":false,"askB2BPricing":true,"askReferenceUsage":true},"WTC":{"askRedistribution":false,"askExistingInterface":true,"askB2BPricing":false,"askReferenceUsage":true},"WF":{"askRedistribution":false,"askExistingInterface":false,"askB2BPricing":false,"askReferenceUsage":false},"SSM":{"askRedistribution":false,"askExistingInterface":false,"askB2BPricing":false,"askReferenceUsage":true}},"decisionRowsLite":[{"Product":"WTB","DMS":"Nextlane I'Car","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":"<p> 1) Mettre à jour votre base article pour utiliser EAN, CAI ou ref constructeur <\/p> <p>2) Faire une demande d'activation d'interface auprès de Nextlane (formulaire ci-dessous) <\/p> <p> 3) Tester export<\/p>","Capability":"Remontée tarifs B2B & référencement produits","SpecificationLink":"https://votre-lien-doc.com","RequestFormLink":"https://votre-lien-doc.com","Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane I'Car","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":"1) Mettre à jour votre base article pour utiliser EAN, CAI ou ref constructeur 2) Faire une demande d'activation d'interface auprès de Nextlane (formulaire ci-dessous) 3) Tester export","Capability":"Remontée tarifs B2B & référencement produits","SpecificationLink":null,"RequestFormLink":"https://votre-lien-doc.com","Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane I'Car","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":"1) Faire une demande d'activation d'interface auprès de Nextlane (formulaire ci-dessous) 2) Paramétrer vos tarifs B2B das la WTB 3) Tester export","Capability":"WTB affiche vos prix et disponibilités à chacun de vos clients","SpecificationLink":null,"RequestFormLink":"https://votre-lien-doc.com","Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane I'Car","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":"1) Mettre à jour votre base article pour utiliser EAN, CAI ou ref constructeur 2) Faire une demande d'activation d'interface auprès de Nextlane (formulaire ci-dessous) 3) Tester export","Capability":"Remontée tarifs B2B & référencement produits","SpecificationLink":null,"RequestFormLink":"https://votre-lien-doc.com","Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane I'Car","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":"1) Mettre à jour votre base article pour utiliser EAN, CAI ou ref constructeur 2) Faire une demande d'activation d'interface auprès de Nextlane (formulaire ci-dessous) 3) Tester export","Capability":"Remontée tarifs B2B & référencement produits","SpecificationLink":null,"RequestFormLink":"https://votre-lien-doc.com","Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane I'Car","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":"1) Mettre à jour votre base article pour utiliser EAN, CAI ou ref constructeur 2) Faire une demande d'activation d'interface auprès de Nextlane (formulaire ci-dessous) 3) Tester export","Capability":"Remontée tarifs B2B & référencement produits","SpecificationLink":null,"RequestFormLink":"https://votre-lien-doc.com","Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane I'Car","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":"1) Faire une demande d'activation d'interface auprès de Nextlane (formulaire ci-dessous) 2) Paramétrer vos tarifs B2B das la WTB 3) Tester export","Capability":"WTB affiche vos prix et disponibilités à chacun de vos clients","SpecificationLink":null,"RequestFormLink":"https://votre-lien-doc.com","Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane I'Car","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":"1) Mettre à jour votre base article pour utiliser EAN, CAI ou ref constructeur 2) Faire une demande d'activation d'interface auprès de Nextlane (formulaire ci-dessous) 3) Tester export","Capability":"Remontée tarifs B2B & référencement produits","SpecificationLink":null,"RequestFormLink":"https://votre-lien-doc.com","Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"DCS","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût DCS","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"DCS","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût DCS","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"DCS","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût DCS","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"DCS","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût DCS","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"DCS","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût DCS","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"DCS","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût DCS","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"DCS","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût DCS","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"DCS","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût DCS","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane Datacar","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane Datacar","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane Datacar","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane Datacar","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane Datacar","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane Datacar","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane Datacar","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Nextlane Datacar","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"495\u20ac HT par instance DMS facturé par Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Autres","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"N","Cost":"Sur devis","DMSCost":"A étudier","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Autres","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"Y","Cost":"Sur devis","DMSCost":"A étudier","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Autres","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"N","Cost":"Sur devis","DMSCost":"A étudier","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Autres","RedistributionNeeded":"N","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"Y","Cost":"Sur devis","DMSCost":"A étudier","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Autres","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"N","Cost":"Sur devis","DMSCost":"A étudier","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Autres","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"Y","ReferenceUsage":"Y","Cost":"Sur devis","DMSCost":"A étudier","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Autres","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"N","Cost":"Sur devis","DMSCost":"A étudier","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTB","DMS":"Autres","RedistributionNeeded":"Y","ExistingInterface":null,"B2BPricingInDMS":"N","ReferenceUsage":"Y","Cost":"Sur devis","DMSCost":"A étudier","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTC","DMS":"DCS","RedistributionNeeded":null,"ExistingInterface":"Y","B2BPricingInDMS":null,"ReferenceUsage":"CAI","Cost":"Inclus dans le Setup","DMSCost":null,"Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WTC","DMS":"DCS","RedistributionNeeded":null,"ExistingInterface":"N","B2BPricingInDMS":null,"ReferenceUsage":"ANY","Cost":"Inclus dans le Setup","DMSCost":null,"Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"WF","DMS":"I'Car","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":null,"Cost":"Inclus dans le Setup","DMSCost":null,"Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"Autres","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"Y","Cost":"Sur devis","DMSCost":"A étudier","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"Autres","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"N","Cost":"Sur devis","DMSCost":"A étudier","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"DCS","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût DCS","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"DCS","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût DCS","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"Incadea","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût Incadea","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"Incadea","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût Incadea","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"Nextlane Eris","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"Nextlane Eris","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"Nextlane Datacar","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"Nextlane Datacar","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"Nextlane i'Car","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"Y","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null},{"Product":"SSM","DMS":"Nextlane i'Car","RedistributionNeeded":null,"ExistingInterface":null,"B2BPricingInDMS":null,"ReferenceUsage":"N","Cost":"Inclus dans le Setup","DMSCost":"Pas de coût Nextlane","Methodology":null,"Capability":null,"SpecificationLink":null,"RequestFormLink":null,"Notes":null,"LastUpdated":null}]};
+
+/* ============================================================
+   LOGIQUE WIZARD
+   ============================================================ */
+(function () {
+  const state = { product: null, dms: null, redistribution: null, existing: null, b2b: null, ref: null };
+  let applicability = null;
+
+  /* ---- helpers ---- */
+  const $ = id => document.getElementById(id);
+  const show = id => $(id).classList.remove('hidden');
+  const hide = id => $(id).classList.add('hidden');
+  const isHidden = id => $(id).classList.contains('hidden');
+
+  function resetRadios(names) {
+    names.forEach(n => document.querySelectorAll(`[name="${n}"]`).forEach(el => el.checked = false));
+  }
+
+  function hideFollowups() {
+    ['q-redis', 'q-existing', 'q-b2b', 'q-ref'].forEach(hide);
+    state.redistribution = state.existing = state.b2b = state.ref = null;
+    resetRadios(['redis', 'existing', 'b2b', 'ref']);
+  }
+
+  function updateB2B() {
+    const show_b2b = applicability?.askB2BPricing && state.redistribution !== null;
+    show_b2b ? show('q-b2b') : hide('q-b2b');
+    if (!show_b2b) { state.b2b = null; resetRadios(['b2b']); updateRef(); }
+  }
+
+  function updateRef() {
+    const show_ref = applicability?.askReferenceUsage && applicability?.askB2BPricing && state.b2b !== null;
+    show_ref ? show('q-ref') : hide('q-ref');
+    if (!show_ref) { state.ref = null; resetRadios(['ref']); }
+  }
+
+  function updateFollowups() {
+    if (!applicability) return;
+    applicability.askExistingInterface ? show('q-existing') : hide('q-existing');
+    updateB2B();
+    // Ref only when B2B not gating (SSM / WF)
+    if (!applicability.askB2BPricing && applicability.askReferenceUsage) show('q-ref');
+  }
+
+  function isComplete() {
+    if (!state.product || !state.dms) return false;
+    if (applicability?.askRedistribution && state.redistribution === null) return false;
+    if (applicability?.askExistingInterface && state.existing === null) return false;
+    if (applicability?.askB2BPricing && state.redistribution !== null && state.b2b === null) return false;
+    if (applicability?.askReferenceUsage) {
+      const refRequired = !applicability.askB2BPricing || state.b2b !== null;
+      if (refRequired && state.ref === null) return false;
+    }
+    return true;
+  }
+
+  function updateEvaluateBtn() {
+    const btn = $('btnEvaluate');
+    const ok = isComplete();
+    btn.style.display = ok ? '' : 'none';
+    btn.disabled = !ok;
+  }
+
+  /* ---- scoring ---- */
+  function scoreYN(rowVal, payVal) {
+    rowVal = (rowVal || '').toUpperCase();
+    if (payVal === null) return (rowVal === 'ANY' || rowVal === 'NA' || rowVal === '') ? 1 : 0;
+    if ((rowVal === 'Y') === payVal) return 2;
+    if (rowVal === 'ANY' || rowVal === 'NA') return 1;
+    return 0;
+  }
+
+  function scoreRow(row, payload) {
+    let s = 0;
+    if (row.DMS === payload.dms) s += 3;
+    else if (row.DMS === 'ANY') s += 1;
+    s += scoreYN(row.RedistributionNeeded, payload.redistributionNeeded);
+    s += scoreYN(row.ExistingInterface, payload.existingInterface);
+    s += scoreYN(row.B2BPricingInDMS, payload.b2bPricing);
+    s += scoreYN(row.ReferenceUsage, payload.referenceUsage);
+    return s;
+  }
+
+  function evaluate() {
+    const rows = DATA.decisionRowsLite.filter(r => r.Product === state.product);
+    const refApplicable = applicability?.askReferenceUsage
+      && (!applicability.askB2BPricing || state.b2b !== null);
+
+    const payload = {
+      dms: state.dms,
+      redistributionNeeded: applicability?.askRedistribution ? (state.redistribution === 'Y') : null,
+      existingInterface: applicability?.askExistingInterface ? (state.existing === 'Y') : null,
+      b2bPricing: applicability?.askB2BPricing ? (state.b2b === 'Y') : null,
+      referenceUsage: refApplicable ? (state.ref === 'Y') : null,
+    };
+
+    const scored = rows.map(r => ({ row: r, s: scoreRow(r, payload) })).sort((a, b) => b.s - a.s);
+    return scored.length && scored[0].s > 0
+      ? { match: scored[0].row, alts: scored.slice(1, 4).map(x => x.row) }
+      : { match: null, alts: [] };
+  }
+
+  /* ---- render result ---- */
+  function esc(s) { return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  function renderMethodology(text) {
+    if (!text) return '<p class="empty">Non renseigné</p>';
+    // Sanitise basic HTML tags already in the content (p tags)
+    const safe = text.replace(/<(?!\/?p>)[^>]+>/gi, '');
+    // If already has <p>, keep them; otherwise convert newlines
+    if (safe.includes('<p>')) return safe;
+    return '<p>' + safe.replace(/\n/g, '<br>') + '</p>';
+  }
+
+  function iconExternal() {
+    return `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+  }
+
+  function renderResult(res) {
+    const box = $('result');
+
+    if (!res.match) {
+      box.innerHTML = `
+        <div class="no-match">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <p>Aucune correspondance trouvée pour cette combinaison.<br>Contactez l'équipe WYZ pour un traitement manuel.</p>
+        </div>`;
+      box.classList.add('visible');
+      return;
+    }
+
+    const r = res.match;
+    const wyzCost = r.Cost || '—';
+    const dmsCost = r.DMSCost || '—';
+
+    box.innerHTML = `
+      <div class="result-header">
+        <h2>Procédure recommandée</h2>
+        <span class="result-tag">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          ${esc(r.Product)} · ${esc(r.DMS)}
+        </span>
+      </div>
+
+      <div class="costs">
+        <div class="cost-box wyz">
+          <div class="cb-label">Coût WYZ</div>
+          <div class="cb-value">${esc(wyzCost)}</div>
+          <div class="cb-hint">Setup & licence facturés par WYZ</div>
+          ${r.SpecificationLink ? `<a href="${esc(r.SpecificationLink)}" target="_blank" rel="noopener">Cahier des charges ${iconExternal()}</a>` : ''}
+        </div>
+        <div class="cost-box dms">
+          <div class="cb-label">Coût DMS</div>
+          <div class="cb-value">${esc(dmsCost)}</div>
+          <div class="cb-hint">Coût facturé directement par le DMS</div>
+          ${r.RequestFormLink ? `<a href="${esc(r.RequestFormLink)}" target="_blank" rel="noopener">Formulaire de demande ${iconExternal()}</a>` : ''}
+        </div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-block">
+          <h3>Méthodologie</h3>
+          ${renderMethodology(r.Methodology)}
+        </div>
+        <div class="info-block">
+          <h3>Ce que permet l'interface</h3>
+          ${r.Capability ? `<p>${esc(r.Capability)}</p>` : '<p class="empty">Non renseigné</p>'}
+        </div>
+      </div>
+
+      ${(r.Notes || r.LastUpdated) ? `
+      <div class="result-meta">
+        ${r.Notes ? `<span>${esc(r.Notes)}</span>` : ''}
+        ${r.LastUpdated ? `<span>Mise à jour : ${esc(r.LastUpdated)}</span>` : ''}
+      </div>` : ''}
+    `;
+
+    box.classList.add('visible');
+    box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  /* ---- init produits ---- */
+  function renderProducts() {
+    const container = $('productChoices');
+    container.innerHTML = DATA.products.map(p =>
+      `<label><input type="radio" name="product" value="${p}"><span>${p}</span></label>`
+    ).join('');
+
+    document.querySelectorAll('[name="product"]').forEach(el =>
+      el.addEventListener('change', () => {
+        state.product = el.value;
+        applicability = DATA.applicabilityByProduct[state.product] || null;
+        state.dms = null;
+        hideFollowups();
+        $('result').classList.remove('visible');
+
+        // Peupler le select DMS
+        let dms = (DATA.dmsByProduct[state.product] || []).slice().sort((a, b) => {
+          if (a === 'Autres') return 1;
+          if (b === 'Autres') return -1;
+          return a.localeCompare(b, 'fr');
+        });
+        const sel = $('dmsSelect');
+        sel.innerHTML = '<option value="">Sélectionnez…</option>' + dms.map(d => `<option>${d}</option>`).join('');
+        show('q-dms');
+        updateEvaluateBtn();
+      })
+    );
+  }
+
+  /* ---- bind events ---- */
+  function bindEvents() {
+    $('dmsSelect').addEventListener('change', e => {
+      state.dms = e.target.value || null;
+      hideFollowups();
+      $('result').classList.remove('visible');
+      if (state.dms && applicability) {
+        if (applicability.askRedistribution) show('q-redis');
+        updateFollowups();
+      }
+      updateEvaluateBtn();
+    });
+
+    document.querySelectorAll('[name="redis"]').forEach(el =>
+      el.addEventListener('change', () => {
+        state.redistribution = el.value;
+        updateB2B();
+        if (!applicability?.askB2BPricing && applicability?.askReferenceUsage) show('q-ref');
+        updateEvaluateBtn();
+      })
+    );
+
+    document.querySelectorAll('[name="existing"]').forEach(el =>
+      el.addEventListener('change', () => {
+        state.existing = el.value;
+        updateEvaluateBtn();
+      })
+    );
+
+    document.querySelectorAll('[name="b2b"]').forEach(el =>
+      el.addEventListener('change', () => {
+        state.b2b = el.value;
+        updateRef();
+        updateEvaluateBtn();
+      })
+    );
+
+    document.querySelectorAll('[name="ref"]').forEach(el =>
+      el.addEventListener('change', () => {
+        state.ref = el.value;
+        updateEvaluateBtn();
+      })
+    );
+
+    $('btnEvaluate').addEventListener('click', () => {
+      const res = evaluate();
+      renderResult(res);
+    });
+
+    $('btnReset').addEventListener('click', () => {
+      Object.keys(state).forEach(k => state[k] = null);
+      applicability = null;
+      document.querySelectorAll('input[type=radio]').forEach(i => i.checked = false);
+      $('dmsSelect').innerHTML = '<option value="">Sélectionnez…</option>';
+      hide('q-dms');
+      hideFollowups();
+      $('result').classList.remove('visible');
+      $('result').innerHTML = '';
+      $('btnEvaluate').style.display = 'none';
+      $('btnEvaluate').disabled = true;
+    });
+  }
+
+  /* ---- démarrage ---- */
+  document.addEventListener('DOMContentLoaded', () => {
+    renderProducts();
+    bindEvents();
+  });
+
+})();
+</script>
+</body>
+</html>
