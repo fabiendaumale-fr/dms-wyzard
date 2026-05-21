@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DMS Wyzard — Arbre décisionnel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --surface: #13161f;
+      --surface2: #1a1e2a;
+      --border: #252a38;
+      --border2: #2f3547;
+      --ink: #e2e6f0;
+      --muted: #5a6280;
+      --font-head: 'Syne', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+
+      /* Couleurs par produit */
+      --c-wtb: #3b82f6;
+      --c-wtc: #10b981;
+      --c-wf:  #f59e0b;
+      --c-ssm: #ec4899;
+      --c-default: #6366f1;
+
+      /* Nœuds */
+      --node-w: 148px;
+      --node-h: 48px;
+      --node-leaf-w: 160px;
+      --node-leaf-h: 56px;
+      --col-gap: 80px;
+      --row-gap: 18px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font-body);
+      font-size: 13px;
+      height: 100vh;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      height: 50px;
+      background: rgba(11,13,18,.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+      padding: 0 20px;
+    }
+    .logo {
+      font-family: var(--font-head); font-weight: 800; font-size: 15px;
+      letter-spacing: -.3px; color: var(--ink);
+      display: flex; align-items: center; gap: 7px;
+    }
+    .logo-dot { color: #3b82f6; }
+    .tag {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+      padding: 2px 8px; border-radius: 999px;
+      background: rgba(59,130,246,.12); color: #3b82f6;
+      border: 1px solid rgba(59,130,246,.25);
+      letter-spacing: .06em;
+    }
+    .topbar-sep { flex: 1; }
+
+    /* Filtres produit */
+    .product-filters { display: flex; gap: 6px; align-items: center; }
+    .pf-btn {
+      padding: 4px 12px; border-radius: 999px;
+      border: 1.5px solid var(--border2);
+      background: transparent; color: var(--muted);
+      font-family: var(--font-body); font-size: 12px; font-weight: 600;
+      cursor: pointer; transition: all .15s;
+    }
+    .pf-btn:hover { color: var(--ink); border-color: var(--border2); }
+    .pf-btn.active-wtb { background: rgba(59,130,246,.15); color: var(--c-wtb); border-color: var(--c-wtb); }
+    .pf-btn.active-wtc { background: rgba(16,185,129,.15); color: var(--c-wtc); border-color: var(--c-wtc); }
+    .pf-btn.active-wf  { background: rgba(245,158,11,.15); color: var(--c-wf);  border-color: var(--c-wf); }
+    .pf-btn.active-ssm { background: rgba(236,72,153,.15); color: var(--c-ssm); border-color: var(--c-ssm); }
+
+    .topbar-actions { display: flex; gap: 8px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 6px 12px; border-radius: 8px;
+      border: 1px solid var(--border2); background: var(--surface2);
+      color: var(--ink); font-family: var(--font-body);
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      text-decoration: none; transition: all .15s;
+    }
+    .btn:hover { border-color: #3b82f6; color: #3b82f6; }
+    .btn.primary { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+    .btn.primary:hover { background: #2563eb; }
+
+    /* ── Canvas zone ── */
+    #viewport {
+      position: fixed;
+      top: 50px; left: 0; right: 0; bottom: 0;
+      overflow: hidden;
+      cursor: grab;
+    }
+    #viewport.dragging { cursor: grabbing; }
+
+    #canvas {
+      position: absolute;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
+    /* ── SVG edges ── */
+    #edgesSvg {
+      position: absolute;
+      top: 0; left: 0;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .edge {
+      fill: none;
+      stroke: var(--border2);
+      stroke-width: 1.5;
+      transition: stroke .2s, stroke-width .2s;
+    }
+    .edge.highlight { stroke-width: 2.5; }
+    .edge-label {
+      font-family: var(--font-mono); font-size: 10px;
+      fill: var(--muted);
+      transition: fill .2s;
+    }
+    .edge.highlight + .edge-label-el { fill: var(--ink); }
+
+    /* ── Nœuds ── */
+    .node {
+      position: absolute;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 10px;
+      border: 1.5px solid var(--border2);
+      background: var(--surface);
+      transition: border-color .15s, box-shadow .15s, transform .15s;
+      cursor: default;
+    }
+    .node:hover {
+      border-color: var(--node-color, #3b82f6);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--node-color, #3b82f6) 20%, transparent);
+      transform: translateY(-1px);
+      z-index: 10;
+    }
+
+    /* Nœud racine (produit) */
+    .node-root {
+      width: 120px; height: 44px;
+      border-radius: 12px;
+      border-width: 2px;
+      font-family: var(--font-head); font-size: 15px; font-weight: 800;
+      letter-spacing: -.3px;
+      background: var(--surface2);
+    }
+
+    /* Nœud DMS */
+    .node-dms {
+      width: var(--node-w); height: var(--node-h);
+      font-family: var(--font-body); font-size: 12px; font-weight: 600;
+      text-align: center; padding: 4px 10px;
+    }
+
+    /* Nœud question */
+    .node-question {
+      width: 130px; height: 42px;
+      border-radius: 8px;
+      font-family: var(--font-body); font-size: 11px; font-weight: 500;
+      text-align: center; padding: 4px 8px;
+      background: var(--surface2);
+      border-style: dashed;
+    }
+
+    /* Feuille = résultat */
+    .node-leaf {
+      width: var(--node-leaf-w);
+      min-height: var(--node-leaf-h);
+      border-radius: 10px;
+      cursor: pointer;
+      padding: 8px 10px;
+      display: flex; flex-direction: column; gap: 3px;
+      align-items: flex-start;
+    }
+    .node-leaf:hover { transform: translateY(-2px) scale(1.02); }
+    .node-leaf .lf-cost {
+      font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+      color: var(--ink); line-height: 1.2;
+    }
+    .node-leaf .lf-dms-cost {
+      font-size: 10px; color: var(--muted); line-height: 1.2;
+    }
+    .node-leaf .lf-edit {
+      margin-top: 4px;
+      font-size: 10px; font-weight: 700; letter-spacing: .04em;
+      text-transform: uppercase; color: var(--node-color, #3b82f6);
+      opacity: 0; transition: opacity .15s;
+    }
+    .node-leaf:hover .lf-edit { opacity: 1; }
+
+    /* indicateur vide */
+    .node-leaf.empty-leaf {
+      border-style: dashed; opacity: .5;
+    }
+
+    /* ── Mini-map ── */
+    #minimap {
+      position: fixed; bottom: 20px; right: 20px; z-index: 100;
+      width: 160px; height: 100px;
+      background: rgba(19,22,31,.9);
+      border: 1px solid var(--border2);
+      border-radius: 10px; overflow: hidden;
+    }
+    #minimapCanvas { width: 100%; height: 100%; }
+
+    /* ── Zoom controls ── */
+    .zoom-controls {
+      position: fixed; bottom: 20px; left: 20px; z-index: 100;
+      display: flex; gap: 6px;
+    }
+    .zoom-btn {
+      width: 32px; height: 32px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--ink);
+      font-size: 16px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+    }
+    .zoom-btn:hover { border-color: #3b82f6; color: #3b82f6; }
+    .zoom-label {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--muted);
+      font-family: var(--font-mono); font-size: 11px;
+      padding: 0 10px; display: flex; align-items: center;
+      min-width: 52px; justify-content: center;
+    }
+
+    /* ── Panel d'édition ── */
+    .edit-panel {
+      position: fixed; right: -420px; top: 50px; bottom: 0; z-index: 150;
+      width: 400px;
+      background: var(--surface);
+      border-left: 1px solid var(--border2);
+      display: flex; flex-direction: column;
+      transition: right .25s cubic-bezier(.4,0,.2,1);
+      overflow: hidden;
+    }
+    .edit-panel.open { right: 0; }
+    .ep-head {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .ep-title { font-family: var(--font-head); font-size: 15px; font-weight: 700; }
+    .ep-close {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      padding: 4px; border-radius: 6px;
+      display: flex; align-items: center; transition: color .15s;
+    }
+    .ep-close:hover { color: var(--ink); }
+    .ep-body { padding: 18px 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+    .ep-foot {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 8px; justify-content: flex-end;
+      flex-shrink: 0;
+    }
+
+    /* Form fields */
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label {
+      font-size: 10px; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .field input, .field select, .field textarea {
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: 8px; color: var(--ink);
+      font-family: var(--font-body); font-size: 13px;
+      padding: 8px 11px; width: 100%;
+      transition: border-color .15s;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      outline: none; border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+    }
+    .field textarea { min-height: 72px; resize: vertical; line-height: 1.5; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* Radio pills */
+    .radio-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .rpill {
+      padding: 5px 10px; border-radius: 999px;
+      border: 1px solid var(--border2); color: var(--muted);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: all .15s; user-select: none;
+    }
+    .rpill:hover { color: var(--ink); }
+    .rpill.sel { border-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,.12); }
+
+    /* ── Toast ── */
+    .toast-wrap {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 300;
+      display: flex; flex-direction: column; gap: 8px; align-items: center;
+    }
+    .toast {
+      padding: 10px 18px; border-radius: 10px;
+      background: var(--surface2); border: 1px solid var(--border2);
+      font-size: 13px; font-weight: 500;
+      box-shadow: 0 8px 32px rgba(0,0,0,.5);
+      animation: tIn .2s ease;
+      white-space: nowrap;
+    }
+    .toast.ok { border-color: rgba(16,185,129,.4); color: #10b981; }
+    .toast.err { border-color: rgba(239,68,68,.4); color: #ef4444; }
+    @keyframes tIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes tOut { to{opacity:0;transform:translateY(8px)} }
+    .toast.dying { animation: tOut .2s ease forwards; }
+
+    /* ── Loader ── */
+    #loader {
+      position: fixed; inset: 0; z-index: 500;
+      background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+    }
+    .loader-ring {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border2);
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loader-text { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+
+    /* ── Connexion overlay (si pas de config) ── */
+    .connect-overlay {
+      position: fixed; inset: 0; z-index: 400;
+      background: rgba(11,13,18,.97);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .connect-box {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: 16px; padding: 32px; width: min(420px, 92vw);
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .connect-box h2 { font-family: var(--font-head); font-size: 18px; font-weight: 700; }
+    .connect-box p { font-size: 12px; color: var(--muted); line-height: 1.6; }
+  </style>
+</head>
+<body>
+
+<!-- Loader -->
+<div id="loader">
+  <div class="loader-ring"></div>
+  <div class="loader-text">Chargement de l'arbre…</div>
+</div>
+
+<!-- Connexion si pas de config sauvegardée -->
+<div class="connect-overlay" id="connectOverlay" style="display:none">
+  <div class="connect-box">
+    <h2>Connexion GitHub requise</h2>
+    <p>Cette vue permet d'éditer les règles. Renseignez vos paramètres GitHub pour activer la sauvegarde. Sans connexion, vous pouvez naviguer mais pas sauvegarder.</p>
+    <div class="field"><label>Token</label><input type="text" id="ci-token" placeholder="ghp_…"></div>
+    <div class="field"><label>Owner</label><input type="text" id="ci-owner" placeholder="fabiendaumale-fr"></div>
+    <div class="field"><label>Repo</label><input type="text" id="ci-repo" placeholder="dms-wyzard"></div>
+    <div class="field-row">
+      <div class="field"><label>Branche</label><input type="text" id="ci-branch" value="main"></div>
+      <div class="field"><label>Fichier</label><input type="text" id="ci-path" value="data.json"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+      <button class="btn" onclick="document.getElementById('connectOverlay').style.display='none'">Ignorer</button>
+      <button class="btn primary" onclick="saveGitHubConfig()">Connecter</button>
+    </div>
+  </div>
+</div>
+
+<!-- Topbar -->
+<header class="topbar">
+  <div class="logo">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+    </svg>
+    DMS Wyzard <span class="logo-dot">·</span> Arbre décisionnel
+  </div>
+  <span class="tag">FLOWCHART</span>
+  <div class="topbar-sep"></div>
+  <div class="product-filters" id="productFilters"></div>
+  <div class="topbar-actions">
+    <button class="btn" onclick="fitView()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+      Ajuster
+    </button>
+    <a class="btn" href="editor.html">Éditeur tableau</a>
+    <a class="btn" href="index.html">Wizard</a>
+  </div>
+</header>
+
+<!-- Canvas -->
+<div id="viewport">
+  <div id="canvas">
+    <svg id="edgesSvg"></svg>
+  </div>
+</div>
+
+<!-- Minimap -->
+<canvas id="minimapCanvas" width="160" height="100" style="position:fixed;bottom:20px;right:20px;z-index:100;border-radius:10px;border:1px solid #252a38;background:rgba(19,22,31,.9)"></canvas>
+
+<!-- Zoom controls -->
+<div class="zoom-controls">
+  <button class="zoom-btn" onclick="zoom(-0.15)">−</button>
+  <div class="zoom-label" id="zoomLabel">100%</div>
+  <button class="zoom-btn" onclick="zoom(+0.15)">+</button>
+</div>
+
+<!-- Panel d'édition (slide-in) -->
+<div class="edit-panel" id="editPanel">
+  <div class="ep-head">
+    <div class="ep-title" id="epTitle">Modifier la règle</div>
+    <button class="ep-close" onclick="closePanel()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="ep-body" id="epBody"></div>
+  <div class="ep-foot">
+    <button class="btn" onclick="closePanel()">Annuler</button>
+    <button class="btn primary" onclick="saveRule()">Enregistrer & sauvegarder</button>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const DATA_URL = 'https://raw.githubusercontent.com/fabiendaumale-fr/dms-wyzard/main/data.json';
+
+let cfg = {};
+let DATA = null;
+let fileSha = null;
+let editingIdx = null;
+
+/* ============================================================
+   COULEURS PAR PRODUIT
+   ============================================================ */
+const PRODUCT_COLORS = {
+  WTB: '#3b82f6',
+  WTC: '#10b981',
+  WF:  '#f59e0b',
+  SSM: '#ec4899',
+};
+function productColor(p) { return PRODUCT_COLORS[p] || '#6366f1'; }
+
+/* ============================================================
+   LAYOUT ENGINE
+   Colonnes : Root | DMS | Q1 | Q2 | Q3 | Feuille
+   ============================================================ */
+const COL_W  = [140, 170, 160, 160, 160, 180]; // largeur de chaque colonne
+const COL_GAP = 64;
+const ROW_GAP = 14;
+const NODE_H  = 48;
+const LEAF_H  = 60;
+const PAD_TOP = 60;
+const PAD_LEFT = 40;
+const PRODUCT_GAP = 80; // espace entre blocs produits
+
+/* Calcule les positions x de chaque colonne */
+function colX(col) {
+  let x = PAD_LEFT;
+  for (let i = 0; i < col; i++) x += COL_W[i] + COL_GAP;
+  return x;
+}
+
+/* Questions pour chaque produit (ordre d'apparition) */
+function getQuestions(product) {
+  const ap = DATA.applicabilityByProduct[product] || {};
+  const qs = [];
+  if (ap.askRedistribution)      qs.push({ key: 'RedistributionNeeded',  label: 'Redistrib. ?' });
+  if (ap.askExistingInterface)   qs.push({ key: 'ExistingInterface',     label: 'Interface ?' });
+  if (ap.askB2BPricing)          qs.push({ key: 'B2BPricingInDMS',      label: 'Prix B2B ?' });
+  if (ap.askReferenceUsage)      qs.push({ key: 'ReferenceUsage',       label: 'Référence ?' });
+  return qs;
+}
+
+/* ============================================================
+   STRUCTURES DE NŒUDS
+   On construit un arbre en mémoire, puis on place tout
+   ============================================================ */
+let nodes = [];   // { id, type, label, x, y, w, h, color, ruleIdx? }
+let edges = [];   // { id, from, to, label? }
+let nodeMap = {}; // id → node
+
+let visibleProducts = new Set();
+
+function buildTree() {
+  nodes = []; edges = []; nodeMap = {};
+  let nid = 0;
+  const makeId = () => 'n' + (nid++);
+
+  let productBaseY = PAD_TOP;
+
+  DATA.products.forEach(product => {
+    if (visibleProducts.size && !visibleProducts.has(product)) return;
+
+    const color = productColor(product);
+    const rules = DATA.decisionRowsLite.filter(r => r.Product === product);
+    const dmsList = DATA.dmsByProduct[product] || [];
+    const questions = getQuestions(product);
+
+    // Nœud racine produit
+    const rootId = makeId();
+    const rootNode = {
+      id: rootId, type: 'root', label: product,
+      x: colX(0), y: 0, w: COL_W[0], h: 48, color,
+    };
+    nodes.push(rootNode); nodeMap[rootId] = rootNode;
+
+    // Pour chaque DMS
+    let dmsNodes = [];
+    dmsList.forEach(dms => {
+      const dmsId = makeId();
+      const dmsRules = rules.filter(r => r.DMS === dms);
+      const dmsNode = {
+        id: dmsId, type: 'dms', label: dms,
+        x: colX(1), y: 0, w: COL_W[1], h: NODE_H, color,
+      };
+      nodes.push(dmsNode); nodeMap[dmsId] = dmsNode;
+      dmsNodes.push({ id: dmsId, dms, rules: dmsRules });
+      edges.push({ id: makeId(), from: rootId, to: dmsId, color });
+    });
+
+    // Layout récursif des questions → feuilles
+    // On calcule d'abord la hauteur totale de chaque DMS, puis on place
+    function buildBranch(parentId, rules, qIdx, baseY, colIdx) {
+      if (qIdx >= questions.length || rules.length === 0) {
+        // Feuilles directes (ou un seul résultat)
+        let leafY = baseY;
+        const leafNodes = [];
+        const uniqueKeys = new Set();
+        rules.forEach(rule => {
+          const key = JSON.stringify([rule.RedistributionNeeded, rule.ExistingInterface,
+            rule.B2BPricingInDMS, rule.ReferenceUsage]);
+          if (!uniqueKeys.has(key)) {
+            uniqueKeys.add(key);
+            const lId = makeId();
+            const ruleIdx = DATA.decisionRowsLite.indexOf(rule);
+            const lNode = {
+              id: lId, type: 'leaf',
+              label: rule.Cost || '—',
+              sub: rule.DMSCost || '',
+              x: colX(colIdx), y: leafY, w: COL_W[5], h: LEAF_H, color, ruleIdx,
+            };
+            nodes.push(lNode); nodeMap[lId] = lNode;
+            leafNodes.push(lNode);
+            edges.push({ id: makeId(), from: parentId, to: lId, color });
+            leafY += LEAF_H + ROW_GAP;
+          }
+        });
+        return leafY - baseY - ROW_GAP; // hauteur occupée
+      }
+
+      const q = questions[qIdx];
+      // Grouper les règles par valeur de cette question
+      const groups = {};
+      rules.forEach(r => {
+        const v = r[q.key] || 'ANY';
+        if (!groups[v]) groups[v] = [];
+        groups[v].push(r);
+      });
+
+      // Nœud question
+      const qId = makeId();
+      const qNode = {
+        id: qId, type: 'question', label: q.label,
+        x: colX(colIdx), y: baseY, w: COL_W[colIdx] || 150, h: 42, color,
+      };
+      nodes.push(qNode); nodeMap[qId] = qNode;
+      edges.push({ id: makeId(), from: parentId, to: qId, color });
+
+      let totalH = 0;
+      Object.entries(groups).forEach(([val, subRules]) => {
+        const childY = baseY + totalH;
+        const h = buildBranch(qId, subRules, qIdx + 1, childY, colIdx + 1);
+        // Étiquette sur l'edge parent→enfant (on retrouvera via from/to)
+        const lastEdge = edges[edges.length - 1];
+        if (lastEdge) lastEdge.edgeLabel = labelYN(val);
+        totalH += h + ROW_GAP;
+      });
+
+      qNode.blockH = totalH - ROW_GAP;
+      return Math.max(NODE_H, totalH - ROW_GAP);
+    }
+
+    // Placer les DMS et leurs branches
+    let currentY = productBaseY;
+    dmsNodes.forEach(({ id: dmsId, dms, rules: dmsRules }) => {
+      const dmsNode = nodeMap[dmsId];
+      dmsNode.y = currentY;
+
+      if (dmsRules.length === 0) {
+        // Feuille vide
+        const lId = makeId();
+        const lNode = {
+          id: lId, type: 'leaf', label: '—', sub: 'Aucune règle',
+          x: colX(2), y: currentY, w: COL_W[5], h: LEAF_H, color,
+          isEmpty: true,
+        };
+        nodes.push(lNode); nodeMap[lId] = lNode;
+        edges.push({ id: makeId(), from: dmsId, to: lId, color });
+        currentY += LEAF_H + ROW_GAP;
+      } else if (questions.length === 0) {
+        // Pas de questions → feuille directe
+        const rule = dmsRules[0];
+        const ruleIdx = DATA.decisionRowsLite.indexOf(rule);
+        const lId = makeId();
+        const lNode = {
+          id: lId, type: 'leaf', label: rule.Cost || '—', sub: rule.DMSCost || '',
+          x: colX(2), y: currentY, w: COL_W[5], h: LEAF_H, color, ruleIdx,
+        };
+        nodes.push(lNode); nodeMap[lId] = lNode;
+        edges.push({ id: makeId(), from: dmsId, to: lId, color });
+        currentY += LEAF_H + ROW_GAP;
+      } else {
+        const h = buildBranch(dmsId, dmsRules, 0, currentY, 2);
+        currentY += h + ROW_GAP * 2;
+      }
+    });
+
+    // Centrer le nœud racine verticalement par rapport à ses enfants DMS
+    if (dmsNodes.length) {
+      const firstDms = nodeMap[dmsNodes[0].id];
+      const lastDms = nodeMap[dmsNodes[dmsNodes.length - 1].id];
+      rootNode.y = (firstDms.y + lastDms.y) / 2;
+    } else {
+      rootNode.y = productBaseY;
+    }
+
+    // Centrer chaque nœud DMS par rapport à ses enfants
+    dmsNodes.forEach(({ id: dmsId }) => {
+      const dmsNode = nodeMap[dmsId];
+      const children = edges
+        .filter(e => e.from === dmsId)
+        .map(e => nodeMap[e.to])
+        .filter(Boolean);
+      if (children.length > 1) {
+        const topY = Math.min(...children.map(c => c.y));
+        const botY = Math.max(...children.map(c => c.y + c.h));
+        dmsNode.y = topY + (botY - topY) / 2 - dmsNode.h / 2;
+      }
+    });
+
+    // Centrer les nœuds question
+    nodes.filter(n => n.type === 'question').forEach(qNode => {
+      const children = edges
+        .filter(e => e.from === qNode.id)
+        .map(e => nodeMap[e.to])
+        .filter(Boolean);
+      if (children.length > 1) {
+        const topY = Math.min(...children.map(c => c.y));
+        const botY = Math.max(...children.map(c => c.y + (c.h || NODE_H)));
+        qNode.y = topY + (botY - topY) / 2 - qNode.h / 2;
+      }
+    });
+
+    productBaseY = currentY + PRODUCT_GAP;
+  });
+}
+
+function labelYN(v) {
+  if (!v || v === 'ANY') return 'ANY';
+  if (v === 'Y') return 'Oui';
+  if (v === 'N') return 'Non';
+  return v;
+}
+
+/* ============================================================
+   RENDU DOM
+   ============================================================ */
+const canvas = document.getElementById('canvas');
+const edgesSvg = document.getElementById('edgesSvg');
+
+function renderAll() {
+  buildTree();
+  renderNodes();
+  renderEdges();
+  updateMinimap();
+}
+
+function renderNodes() {
+  // Supprimer anciens nœuds DOM (garder le SVG)
+  [...canvas.children].forEach(c => { if (c !== edgesSvg) c.remove(); });
+
+  const totalW = Math.max(...nodes.map(n => n.x + n.w)) + 60;
+  const totalH = Math.max(...nodes.map(n => n.y + n.h)) + 60;
+  canvas.style.width = totalW + 'px';
+  canvas.style.height = totalH + 'px';
+  edgesSvg.setAttribute('width', totalW);
+  edgesSvg.setAttribute('height', totalH);
+
+  nodes.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'node node-' + n.type + (n.isEmpty ? ' empty-leaf' : '');
+    el.id = 'node-' + n.id;
+    el.style.cssText = `left:${n.x}px;top:${n.y}px;width:${n.w}px;height:${n.h}px;`
+      + `--node-color:${n.color};border-color:${n.type==='root'?n.color:''};`
+      + (n.type==='root' ? `color:${n.color};` : '');
+
+    if (n.type === 'root') {
+      el.textContent = n.label;
+    } else if (n.type === 'dms') {
+      el.innerHTML = `<span style="color:${n.color};font-weight:700">${esc(n.label)}</span>`;
+    } else if (n.type === 'question') {
+      el.innerHTML = `<span style="color:var(--muted)">${esc(n.label)}</span>`;
+    } else if (n.type === 'leaf') {
+      el.style.height = 'auto';
+      el.innerHTML = `
+        <div class="lf-cost">${esc(n.label)}</div>
+        ${n.sub ? `<div class="lf-dms-cost">${esc(n.sub)}</div>` : ''}
+        ${n.ruleIdx !== undefined ? `<div class="lf-edit">✎ Modifier</div>` : ''}
+      `;
+      el.style.borderColor = n.color + '55';
+      el.style.background = n.color + '0d';
+      if (n.ruleIdx !== undefined) {
+        el.addEventListener('click', () => openPanel(n.ruleIdx));
+        el.style.cursor = 'pointer';
+      }
+    }
+
+    canvas.appendChild(el);
+  });
+}
+
+function renderEdges() {
+  edgesSvg.innerHTML = '';
+
+  edges.forEach(e => {
+    const from = nodeMap[e.from];
+    const to   = nodeMap[e.to];
+    if (!from || !to) return;
+
+    const x1 = from.x + from.w;
+    const y1 = from.y + (from.h || NODE_H) / 2;
+    const x2 = to.x;
+    const y2 = to.y + (to.h || NODE_H) / 2;
+
+    const mx = (x1 + x2) / 2;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+    path.setAttribute('class', 'edge');
+    path.setAttribute('stroke', e.color + '60');
+    path.dataset.from = e.from;
+    path.dataset.to   = e.to;
+    edgesSvg.appendChild(path);
+
+    // Étiquette Y/N
+    if (e.edgeLabel) {
+      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      txt.setAttribute('x', mx);
+      txt.setAttribute('y', (y1 + y2) / 2 - 4);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('class', 'edge-label');
+      txt.textContent = e.edgeLabel;
+      edgesSvg.appendChild(txt);
+    }
+  });
+}
+
+/* ============================================================
+   PAN & ZOOM
+   ============================================================ */
+let tx = 40, ty = 40, scale = 1;
+let isPanning = false, startX, startY, startTx, startTy;
+
+const viewport = document.getElementById('viewport');
+
+viewport.addEventListener('mousedown', e => {
+  if (e.target.closest('.node-leaf') || e.target.closest('.edit-panel')) return;
+  isPanning = true;
+  startX = e.clientX; startY = e.clientY;
+  startTx = tx; startTy = ty;
+  viewport.classList.add('dragging');
+});
+
+window.addEventListener('mousemove', e => {
+  if (!isPanning) return;
+  tx = startTx + e.clientX - startX;
+  ty = startTy + e.clientY - startY;
+  applyTransform();
+  updateMinimap();
+});
+
+window.addEventListener('mouseup', () => {
+  isPanning = false;
+  viewport.classList.remove('dragging');
+});
+
+viewport.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = -e.deltaY * 0.001;
+  const newScale = Math.min(2, Math.max(0.2, scale + delta));
+  // Zoom centré sur la souris
+  const rect = viewport.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  tx = mx - (mx - tx) * (newScale / scale);
+  ty = my - (my - ty) * (newScale / scale);
+  scale = newScale;
+  applyTransform();
+  updateMinimap();
+}, { passive: false });
+
+// Touch
+let lastTouchDist = null;
+viewport.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    isPanning = true;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    startTx = tx; startTy = ty;
+  }
+  if (e.touches.length === 2) {
+    lastTouchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+}, { passive: true });
+
+viewport.addEventListener('touchmove', e => {
+  if (e.touches.length === 1 && isPanning) {
+    tx = startTx + e.touches[0].clientX - startX;
+    ty = startTy + e.touches[0].clientY - startY;
+    applyTransform();
+  }
+  if (e.touches.length === 2 && lastTouchDist) {
+    const d = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    scale = Math.min(2, Math.max(0.2, scale * (d / lastTouchDist)));
+    lastTouchDist = d;
+    applyTransform();
+  }
+}, { passive: true });
+
+viewport.addEventListener('touchend', () => { isPanning = false; lastTouchDist = null; });
+
+function applyTransform() {
+  canvas.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  document.getElementById('zoomLabel').textContent = Math.round(scale * 100) + '%';
+}
+
+function zoom(delta) {
+  scale = Math.min(2, Math.max(0.2, scale + delta));
+  applyTransform(); updateMinimap();
+}
+
+function fitView() {
+  if (!nodes.length) return;
+  const vw = viewport.clientWidth;
+  const vh = viewport.clientHeight;
+  const minX = Math.min(...nodes.map(n => n.x));
+  const maxX = Math.max(...nodes.map(n => n.x + n.w));
+  const minY = Math.min(...nodes.map(n => n.y));
+  const maxY = Math.max(...nodes.map(n => n.y + (n.h || NODE_H)));
+  const treeW = maxX - minX;
+  const treeH = maxY - minY;
+  scale = Math.min(2, Math.max(0.15, Math.min((vw - 80) / treeW, (vh - 80) / treeH)));
+  tx = (vw - treeW * scale) / 2 - minX * scale;
+  ty = (vh - treeH * scale) / 2 - minY * scale;
+  applyTransform(); updateMinimap();
+}
+
+/* ============================================================
+   MINIMAP
+   ============================================================ */
+function updateMinimap() {
+  const mc = document.getElementById('minimapCanvas');
+  const ctx = mc.getContext('2d');
+  const mw = mc.width, mh = mc.height;
+  ctx.clearRect(0, 0, mw, mh);
+
+  if (!nodes.length) return;
+  const minX = Math.min(...nodes.map(n => n.x));
+  const maxX = Math.max(...nodes.map(n => n.x + n.w));
+  const minY = Math.min(...nodes.map(n => n.y));
+  const maxY = Math.max(...nodes.map(n => n.y + (n.h || NODE_H)));
+  const treeW = maxX - minX || 1;
+  const treeH = maxY - minY || 1;
+  const sc = Math.min((mw - 8) / treeW, (mh - 8) / treeH);
+  const ox = (mw - treeW * sc) / 2;
+  const oy = (mh - treeH * sc) / 2;
+
+  // Nœuds
+  nodes.forEach(n => {
+    ctx.fillStyle = n.color + '40';
+    ctx.fillRect(ox + (n.x - minX) * sc, oy + (n.y - minY) * sc, n.w * sc, (n.h || NODE_H) * sc);
+  });
+
+  // Viewport rect
+  const vw = viewport.clientWidth;
+  const vh = viewport.clientHeight;
+  const vx = (-tx / scale - minX) * sc + ox;
+  const vy = (-ty / scale - minY) * sc + oy;
+  const vW = (vw / scale) * sc;
+  const vH = (vh / scale) * sc;
+  ctx.strokeStyle = 'rgba(255,255,255,.35)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(vx, vy, vW, vH);
+}
+
+/* ============================================================
+   FILTRES PRODUIT
+   ============================================================ */
+function renderProductFilters() {
+  const el = document.getElementById('productFilters');
+  el.innerHTML = DATA.products.map(p => {
+    const cls = visibleProducts.has(p) ? `active-${p.toLowerCase()}` : '';
+    return `<button class="pf-btn ${cls}" data-p="${p}" onclick="toggleProduct('${p}')">${p}</button>`;
+  }).join('');
+}
+
+function toggleProduct(p) {
+  if (visibleProducts.has(p)) visibleProducts.delete(p);
+  else visibleProducts.add(p);
+  renderProductFilters();
+  renderAll();
+  setTimeout(fitView, 50);
+}
+
+/* ============================================================
+   PANEL D'ÉDITION
+   ============================================================ */
+const YN_OPTS = [
+  { v: null,  l: '—'   },
+  { v: 'Y',   l: 'Oui' },
+  { v: 'N',   l: 'Non' },
+  { v: 'ANY', l: 'ANY' },
+];
+
+function openPanel(ruleIdx) {
+  editingIdx = ruleIdx;
+  const r = DATA.decisionRowsLite[ruleIdx];
+  document.getElementById('epTitle').textContent = `${r.Product} · ${r.DMS}`;
+
+  const body = document.getElementById('epBody');
+  body.innerHTML = `
+    <div class="field-row">
+      <div class="field"><label>Coût WYZ</label>
+        <input type="text" id="ep-cost" value="${esc(r.Cost||'')}"></div>
+      <div class="field"><label>Coût DMS</label>
+        <input type="text" id="ep-dmscost" value="${esc(r.DMSCost||'')}"></div>
+    </div>
+    ${radioField('Redistribution', 'ep-redis', r.RedistributionNeeded)}
+    ${radioField('Interface existante', 'ep-existing', r.ExistingInterface)}
+    ${radioField('Prix B2B dans DMS', 'ep-b2b', r.B2BPricingInDMS)}
+    ${radioField('Référence', 'ep-ref', r.ReferenceUsage)}
+    <div class="field"><label>Méthodologie</label>
+      <textarea id="ep-method">${esc(r.Methodology||'')}</textarea></div>
+    <div class="field"><label>Ce que permet l'interface</label>
+      <textarea id="ep-cap" style="min-height:52px">${esc(r.Capability||'')}</textarea></div>
+    <div class="field-row">
+      <div class="field"><label>Lien cahier des charges</label>
+        <input type="text" id="ep-spec" value="${esc(r.SpecificationLink||'')}"></div>
+      <div class="field"><label>Formulaire DMS</label>
+        <input type="text" id="ep-req" value="${esc(r.RequestFormLink||'')}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Notes</label>
+        <input type="text" id="ep-notes" value="${esc(r.Notes||'')}"></div>
+      <div class="field"><label>Mise à jour</label>
+        <input type="text" id="ep-updated" value="${esc(r.LastUpdated||'')}"></div>
+    </div>
+  `;
+
+  // Bind radio pills
+  body.querySelectorAll('.rpill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const group = pill.dataset.group;
+      body.querySelectorAll(`.rpill[data-group="${group}"]`).forEach(p => p.classList.remove('sel'));
+      pill.classList.add('sel');
+    });
+  });
+
+  document.getElementById('editPanel').classList.add('open');
+}
+
+function radioField(label, id, currentVal) {
+  const pills = YN_OPTS.map(o => {
+    const sel = (o.v === currentVal || (o.v === null && currentVal === null)) ? 'sel' : '';
+    return `<span class="rpill ${sel}" data-group="${id}" data-val="${o.v === null ? '__null__' : o.v}">${o.l}</span>`;
+  }).join('');
+  return `<div class="field"><label>${label}</label><div class="radio-row" id="${id}">${pills}</div></div>`;
+}
+
+function getRadio(id) {
+  const sel = document.querySelector(`#ep-body #${id} .rpill.sel`);
+  if (!sel) return null;
+  return sel.dataset.val === '__null__' ? null : sel.dataset.val;
+}
+
+function closePanel() {
+  document.getElementById('editPanel').classList.remove('open');
+  editingIdx = null;
+}
+
+async function saveRule() {
+  if (editingIdx === null) return;
+  const r = DATA.decisionRowsLite[editingIdx];
+
+  r.Cost              = v('ep-cost');
+  r.DMSCost           = v('ep-dmscost');
+  r.RedistributionNeeded = getRadio('ep-redis');
+  r.ExistingInterface = getRadio('ep-existing');
+  r.B2BPricingInDMS   = getRadio('ep-b2b');
+  r.ReferenceUsage    = getRadio('ep-ref');
+  r.Methodology       = v('ep-method');
+  r.Capability        = v('ep-cap');
+  r.SpecificationLink = v('ep-spec');
+  r.RequestFormLink   = v('ep-req');
+  r.Notes             = v('ep-notes');
+  r.LastUpdated       = v('ep-updated');
+
+  if (cfg.token) {
+    await pushToGitHub();
+  } else {
+    toast('Règle modifiée localement (non connecté à GitHub)', 'ok');
+  }
+
+  closePanel();
+  renderAll();
+}
+
+function v(id) {
+  const el = document.getElementById(id);
+  return el ? (el.value.trim() || null) : null;
+}
+
+/* ============================================================
+   GITHUB API
+   ============================================================ */
+async function pushToGitHub() {
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(DATA, null, 2))));
+  const now = new Date().toISOString().slice(0,16).replace('T',' ');
+  const body = {
+    message: `chore: mise à jour règle via DMS Wyzard Tree (${now})`,
+    content, branch: cfg.branch || 'main',
+    ...(fileSha ? { sha: fileSha } : {})
+  };
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${cfg.path}`, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${cfg.token}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
+    const json = await res.json();
+    fileSha = json.content.sha;
+    toast('Sauvegardé sur GitHub ✓', 'ok');
+  } catch(e) {
+    toast('Erreur GitHub : ' + e.message, 'err');
+  }
+}
+
+/* ============================================================
+   CONFIG GITHUB
+   ============================================================ */
+function loadGitHubConfig() {
+  try { return JSON.parse(localStorage.getItem('wyzard_cfg') || '{}'); } catch(e) { return {}; }
+}
+
+function saveGitHubConfig() {
+  cfg = {
+    token:  document.getElementById('ci-token').value.trim(),
+    owner:  document.getElementById('ci-owner').value.trim(),
+    repo:   document.getElementById('ci-repo').value.trim(),
+    branch: document.getElementById('ci-branch').value.trim() || 'main',
+    path:   document.getElementById('ci-path').value.trim() || 'data.json',
+  };
+  localStorage.setItem('wyzard_cfg', JSON.stringify(cfg));
+  document.getElementById('connectOverlay').style.display = 'none';
+  toast('Configuration GitHub sauvegardée ✓', 'ok');
+  // Récupérer le SHA
+  fetchFileSha();
+}
+
+async function fetchFileSha() {
+  if (!cfg.token || !cfg.owner || !cfg.repo) return;
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${cfg.path || 'data.json'}?ref=${cfg.branch || 'main'}`,
+      { headers: { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json' } }
+    );
+    if (res.ok) { const j = await res.json(); fileSha = j.sha; }
+  } catch(e) {}
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+function toast(msg, type='ok') {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => { el.classList.add('dying'); setTimeout(() => el.remove(), 200); }, 3000);
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ============================================================
+   INIT
+   ============================================================ */
+async function init() {
+  // Config GitHub depuis localStorage
+  cfg = loadGitHubConfig();
+  if (cfg.owner) {
+    ['ci-token','ci-owner','ci-repo','ci-branch','ci-path'].forEach(id => {
+      const key = id.replace('ci-','');
+      document.getElementById(id).value = cfg[key] || '';
+    });
+    fetchFileSha();
+  }
+
+  // Charger data.json
+  let loaded = false;
+  try {
+    const url = cfg.owner && cfg.repo
+      ? `https://raw.githubusercontent.com/${cfg.owner}/${cfg.repo}/${cfg.branch||'main'}/${cfg.path||'data.json'}?t=${Date.now()}`
+      : DATA_URL + '?t=' + Date.now();
+    const res = await fetch(url);
+    if (res.ok) { DATA = await res.json(); loaded = true; }
+  } catch(e) {}
+
+  if (!loaded) {
+    document.getElementById('loader').innerHTML =
+      `<div style="color:#ef4444;font-family:var(--font-mono);font-size:13px">
+        Impossible de charger data.json.<br>
+        <a href="editor.html" style="color:#3b82f6">→ Configurer la connexion dans l'éditeur</a>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('loader').style.display = 'none';
+
+  // Afficher overlay connexion si pas de token (mais data chargée)
+  if (!cfg.token) {
+    document.getElementById('connectOverlay').style.display = 'flex';
+  }
+
+  renderProductFilters();
+  renderAll();
+  setTimeout(fitView, 80);
+}
+
+init();
+</script>
+</body>
+</html>
