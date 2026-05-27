@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DMS Wyzard — Stock Report FTP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f4f0;
+      --card: #ffffff;
+      --ink: #1a1a1a;
+      --muted: #7a7a72;
+      --border: #e2e0d8;
+      --border2: #ccc9be;
+
+      /* Status colors */
+      --green: #1a7a4a;
+      --green-bg: #edf7f1;
+      --green-border: #a8d9be;
+      --orange: #b85c00;
+      --orange-bg: #fef3e8;
+      --orange-border: #f0c090;
+      --red: #b02020;
+      --red-bg: #fdf0f0;
+      --red-border: #e8b0b0;
+      --blue: #1a4a8a;
+      --blue-bg: #eef3fc;
+      --blue-border: #a8c0e8;
+
+      --ff: 'Bricolage Grotesque', sans-serif;
+      --fm: 'DM Mono', monospace;
+      --radius: 12px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--ff);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ── */
+    .shell {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+    }
+
+    /* ── Header ── */
+    .header {
+      margin-bottom: 36px;
+    }
+    .header-eyebrow {
+      font-family: var(--fm);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-eyebrow::before {
+      content: '';
+      display: inline-block;
+      width: 24px; height: 2px;
+      background: var(--muted);
+      border-radius: 999px;
+    }
+    .header h1 {
+      font-size: clamp(26px, 5vw, 38px);
+      font-weight: 800;
+      letter-spacing: -.6px;
+      line-height: 1.15;
+      color: var(--ink);
+    }
+    .header h1 em {
+      font-style: normal;
+      color: var(--muted);
+    }
+    .header-sub {
+      margin-top: 10px;
+      font-size: 14px;
+      color: var(--muted);
+      max-width: 520px;
+      line-height: 1.65;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    /* ── Étapes ── */
+    .step {
+      padding: 22px 24px;
+      border-bottom: 1px solid var(--border);
+      transition: opacity .2s;
+    }
+    .step:last-child { border-bottom: none; }
+    .step.locked { opacity: .38; pointer-events: none; }
+
+    .step-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .step-num {
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fff;
+      font-family: var(--fm);
+      font-size: 11px;
+      font-weight: 500;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step.locked .step-num { background: var(--border2); }
+    .step-label {
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -.2px;
+    }
+
+    /* ── Choix boutons ── */
+    .choices {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .choice {
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1.5px solid var(--border2);
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--ff);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+      user-select: none;
+    }
+    .choice:hover {
+      border-color: var(--ink);
+      background: #fff;
+    }
+    .choice.sel {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+
+    /* DMS : grid car plus long */
+    .choices.dms-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 8px;
+    }
+    .choices.dms-grid .choice {
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .choice-sub {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--muted);
+      transition: color .15s;
+    }
+    .choice.sel .choice-sub { color: rgba(255,255,255,.6); }
+
+    /* ── Actions ── */
+    .actions {
+      padding: 18px 24px;
+      display: flex;
+      gap: 10px;
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border2);
+      background: var(--card);
+      color: var(--ink);
+      font-family: var(--ff);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .btn:hover { border-color: var(--ink); }
+    .btn.primary {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+    .btn.primary:hover { background: #333; }
+    .btn.primary:disabled { opacity: .35; cursor: not-allowed; }
+    .btn.ghost { color: var(--muted); }
+    .btn.ghost:hover { color: var(--ink); }
+
+    /* ── Résultat ── */
+    #result { display: none; }
+    #result.show { display: block; }
+
+    .result-card {
+      border-radius: 16px;
+      border: 1.5px solid;
+      overflow: hidden;
+    }
+    .result-card.green { border-color: var(--green-border); background: var(--green-bg); }
+    .result-card.orange { border-color: var(--orange-border); background: var(--orange-bg); }
+    .result-card.red { border-color: var(--red-border); background: var(--red-bg); }
+    .result-card.blue { border-color: var(--blue-border); background: var(--blue-bg); }
+
+    .result-top {
+      padding: 20px 22px 16px;
+      border-bottom: 1px solid;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+    .result-card.green .result-top { border-color: var(--green-border); }
+    .result-card.orange .result-top { border-color: var(--orange-border); }
+    .result-card.red .result-top { border-color: var(--red-border); }
+    .result-card.blue .result-top { border-color: var(--blue-border); }
+
+    .result-icon {
+      font-size: 22px;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .result-headline {
+      flex: 1;
+    }
+    .result-status {
+      font-family: var(--fm);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .result-card.green .result-status { color: var(--green); }
+    .result-card.orange .result-status { color: var(--orange); }
+    .result-card.red .result-status { color: var(--red); }
+    .result-card.blue .result-status { color: var(--blue); }
+
+    .result-title {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -.3px;
+      color: var(--ink);
+      line-height: 1.3;
+    }
+
+    .result-body {
+      padding: 18px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Action WYZ */
+    .action-wyz {
+      display: flex;
+      gap: 12px;
+      padding: 14px 16px;
+      background: rgba(0,0,0,.04);
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,.07);
+    }
+    .action-wyz-label {
+      font-family: var(--fm);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0;
+      padding-top: 1px;
+    }
+    .action-wyz-content {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      line-height: 1.5;
+    }
+
+    /* Steps list */
+    .steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+    .steps-title {
+      font-family: var(--fm);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .step-item {
+      display: flex;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(0,0,0,.06);
+      align-items: flex-start;
+    }
+    .step-item:last-child { border-bottom: none; }
+    .step-bullet {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      background: var(--ink);
+      color: #fff;
+      font-family: var(--fm);
+      font-size: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .step-text {
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--ink);
+    }
+    .step-text strong { font-weight: 700; }
+
+    /* Alerte référentiel */
+    .ref-alert {
+      display: flex;
+      gap: 10px;
+      padding: 13px 15px;
+      border-radius: 10px;
+      border: 1.5px solid var(--orange-border);
+      background: var(--orange-bg);
+      font-size: 13px;
+      line-height: 1.55;
+      color: var(--ink);
+    }
+    .ref-alert-icon { flex-shrink: 0; font-size: 16px; }
+
+    /* Capabilities */
+    .caps {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media(max-width:500px){ .caps { grid-template-columns: 1fr; } }
+    .cap-box {
+      padding: 12px 14px;
+      border-radius: 10px;
+      background: rgba(0,0,0,.04);
+      border: 1px solid rgba(0,0,0,.07);
+    }
+    .cap-box-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .cap-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .cap-list li {
+      font-size: 12px;
+      color: var(--ink);
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+    }
+    .cap-list li::before {
+      content: attr(data-icon);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* Format fichier */
+    .file-format {
+      padding: 13px 15px;
+      border-radius: 10px;
+      background: rgba(0,0,0,.04);
+      border: 1px solid rgba(0,0,0,.07);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+    .file-format strong { font-weight: 700; }
+    .ff-row { display: flex; gap: 8px; margin-top: 6px; }
+    .ff-tag {
+      font-family: var(--fm);
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 6px;
+      background: var(--ink);
+      color: #fff;
+    }
+
+    /* Nav */
+    .nav-links {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+      justify-content: center;
+    }
+    .nav-link {
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 600;
+      transition: color .15s;
+    }
+    .nav-link:hover { color: var(--ink); }
+  </style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-eyebrow">DMS Wyzard · Stock Report</div>
+    <h1>Flux stock <em>par FTP</em></h1>
+    <p class="header-sub">Guide de mise en place du Stock Report pour les solutions sans connexion DMS directe. Le client dépose ses fichiers stock sur un SFTP mis à disposition par WYZ.</p>
+  </div>
+
+  <!-- Wizard -->
+  <div class="card" id="wizardCard">
+
+    <!-- Q1 : Produit -->
+    <div class="step" id="q1">
+      <div class="step-head">
+        <div class="step-num">1</div>
+        <div class="step-label">Quel produit est concerné ?</div>
+      </div>
+      <div class="choices" id="c1">
+        <button class="choice" data-val="WTC" onclick="pick(1,this)">
+          Wyz Tyre Check
+        </button>
+        <button class="choice" data-val="WTB-AchatDevis" onclick="pick(1,this)">
+          WTB Achat / Devis
+        </button>
+        <button class="choice" data-val="WTB-Redis" onclick="pick(1,this)">
+          WTB Redistribution
+        </button>
+      </div>
+    </div>
+
+    <!-- Q2 : DMS -->
+    <div class="step locked" id="q2">
+      <div class="step-head">
+        <div class="step-num">2</div>
+        <div class="step-label">Quel DMS utilise le client ?</div>
+      </div>
+      <div class="choices dms-grid" id="c2">
+        <button class="choice" data-val="DCS" onclick="pick(2,this)">
+          DCS Net Reynolds
+          <span class="choice-sub">Requêteur natif disponible</span>
+        </button>
+        <button class="choice" data-val="Nextlane" onclick="pick(2,this)">
+          Nextlane
+          <span class="choice-sub">I'Car, Datacar, Eris, Erikauto…</span>
+        </button>
+        <button class="choice" data-val="Incadea" onclick="pick(2,this)">
+          Incadea
+          <span class="choice-sub"></span>
+        </button>
+        <button class="choice" data-val="Everlog" onclick="pick(2,this)">
+          Everlog
+          <span class="choice-sub">Pas d'export natif</span>
+        </button>
+        <button class="choice" data-val="CDK" onclick="pick(2,this)">
+          CDK Global
+          <span class="choice-sub">Keyloop, ADP…</span>
+        </button>
+        <button class="choice" data-val="Autre" onclick="pick(2,this)">
+          Autre DMS
+          <span class="choice-sub">ou inconnu</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Q3 : Référentiel -->
+    <div class="step locked" id="q3">
+      <div class="step-head">
+        <div class="step-num">3</div>
+        <div class="step-label">Le client utilise-t-il un référentiel connu ?</div>
+      </div>
+      <div class="choices" id="c3">
+        <button class="choice" data-val="Y" onclick="pick(3,this)">
+          ✓ Oui — EAN manufacturier ou ref constructeur
+        </button>
+        <button class="choice" data-val="N" onclick="pick(3,this)">
+          ✗ Non — référentiel interne uniquement
+        </button>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <button class="btn primary" id="btnGo" disabled onclick="showResult()">
+        Voir la procédure →
+      </button>
+      <button class="btn ghost" onclick="reset()">Réinitialiser</button>
+    </div>
+
+  </div><!-- /card -->
+
+  <!-- Résultat -->
+  <div id="result"></div>
+
+  <!-- Nav -->
+  <div class="nav-links">
+    <a class="nav-link" href="index.html">← Wizard DMS complet</a>
+    <a class="nav-link" href="editor.html">Éditeur</a>
+    <a class="nav-link" href="tree.html">Arbre décisionnel</a>
+  </div>
+
+</div><!-- /shell -->
+
+<script>
+/* ============================================================
+   BASE DE CONNAISSANCE
+   ============================================================ */
+const DB = {
+  DCS: {
+    feasibility: 'green',
+    title: 'Export possible via le requêteur natif DCS',
+    summary: 'DCS Net Reynolds dispose d\'un requêteur natif qui permet d\'automatiser l\'export de stock. Si le client ne sait pas l\'utiliser, WYZ peut l\'accompagner.',
+    actionWYZ: 'Création SFTP + paramétrage côté WYZ.',
+    steps: [
+      { text: '<strong>WYZ crée le SFTP</strong> et communique les accès au client (hôte, identifiants, nommage de fichier attendu).' },
+      { text: '<strong>Le client configure le requêteur natif DCS</strong> pour exporter le stock au format CSV (2 colonnes : référence + quantité).' },
+      { text: '<strong>Si le client ne maîtrise pas le requêteur</strong>, WYZ peut l\'assister dans la création de la requête et la planification.' },
+      { text: '<strong>Planifier l\'export toutes les heures</strong> minimum pour éviter les risques de rupture affichée.' },
+      { text: '<strong>Valider le format</strong> : 1 fichier par point de vente, nommage convenu, colonnes correctes.' },
+    ]
+  },
+  Nextlane: {
+    feasibility: 'orange',
+    title: 'Export possible — ressource interne client requise',
+    summary: 'Nextlane (I\'Car, Datacar, Eris, Erikauto…) ne peut pas réaliser l\'export à la place du client. Les WebServices Nextlane ne permettent pas de récupérer un stock complet régulièrement. Le client doit disposer d\'une ressource interne capable d\'écrire et planifier le script.',
+    actionWYZ: 'Création SFTP + paramétrage côté WYZ. Assistance possible à la création du script.',
+    steps: [
+      { text: '<strong>WYZ crée le SFTP</strong> et communique les accès au client.' },
+      { text: '<strong>Vérifier que le client dispose d\'une ressource interne</strong> (développeur, technicien IT) capable de se connecter à la base de données Nextlane.' },
+      { text: '<strong>Un script doit être créé</strong> pour se connecter à la base de données locale et extraire stock + références.' },
+      { text: '<strong>WYZ peut éventuellement assister</strong> à la création du script et à la planification de l\'export automatique vers le SFTP.' },
+      { text: '<strong>Planifier l\'export toutes les heures</strong> via un planificateur de tâches (cron, Windows Task Scheduler…).' },
+      { text: '<strong>Valider le format</strong> : 1 fichier par point de vente, 2 colonnes CSV, nommage convenu.' },
+    ]
+  },
+  Incadea: {
+    feasibility: 'orange',
+    title: 'Export possible — ressource interne client requise',
+    summary: 'Même problématique que Nextlane. Incadea ne peut pas réaliser l\'export à la place du client. Une ressource interne est nécessaire pour créer et planifier le script d\'export.',
+    actionWYZ: 'Création SFTP + paramétrage côté WYZ. Assistance possible à la création du script.',
+    steps: [
+      { text: '<strong>WYZ crée le SFTP</strong> et communique les accès au client.' },
+      { text: '<strong>Vérifier que le client dispose d\'une ressource interne</strong> capable de se connecter à la base Incadea.' },
+      { text: '<strong>Un script d\'export doit être développé</strong> par le client (connexion BDD locale → CSV → dépôt SFTP).' },
+      { text: '<strong>WYZ peut éventuellement assister</strong> à la création du script et à la planification.' },
+      { text: '<strong>Planifier l\'export toutes les heures</strong> via un planificateur de tâches.' },
+      { text: '<strong>Valider le format</strong> : 1 fichier par point de vente, 2 colonnes CSV, nommage convenu.' },
+    ]
+  },
+  Everlog: {
+    feasibility: 'red',
+    title: 'Nécessite un cadrage projet',
+    summary: 'Everlog ne dispose d\'aucune solution pour générer ses propres exports de stock. La mise en place d\'un flux FTP nécessite un cadrage projet spécifique avant toute implémentation.',
+    actionWYZ: 'Escalader en avant-vente / équipe projet WYZ avant toute promesse au client.',
+    steps: [
+      { text: '<strong>Ne pas s\'engager</strong> sur un délai ou une faisabilité sans validation préalable de l\'équipe projet WYZ.' },
+      { text: '<strong>Ouvrir un cadrage projet</strong> avec l\'équipe WYZ pour évaluer les options disponibles (connecteur tiers, export manuel, API alternative…).' },
+      { text: '<strong>Informer le client</strong> que la mise en place nécessite une phase de cadrage et que le planning sera défini en conséquence.' },
+    ]
+  },
+  CDK: {
+    feasibility: 'red',
+    title: 'Nécessite un cadrage projet',
+    summary: 'CDK Global (Keyloop, ADP…) ne dispose pas de solution standard pour des exports autonomes. La mise en place d\'un flux FTP nécessite un cadrage projet spécifique.',
+    actionWYZ: 'Escalader en avant-vente / équipe projet WYZ avant toute promesse au client.',
+    steps: [
+      { text: '<strong>Ne pas s\'engager</strong> sur un délai ou une faisabilité sans validation préalable de l\'équipe projet WYZ.' },
+      { text: '<strong>Ouvrir un cadrage projet</strong> avec l\'équipe WYZ pour évaluer les options disponibles.' },
+      { text: '<strong>Informer le client</strong> que la mise en place nécessite une phase de cadrage.' },
+    ]
+  },
+  Autre: {
+    feasibility: 'blue',
+    title: 'À vérifier avec le client',
+    summary: 'Pour un DMS non référencé, la première étape est de vérifier que le client est en mesure d\'automatiser l\'export de stock lui-même. Si ce n\'est pas le cas, un cadrage projet est nécessaire.',
+    actionWYZ: 'Création SFTP + paramétrage si export possible. Sinon, escalader en cadrage projet.',
+    steps: [
+      { text: '<strong>Demander au client</strong> s\'il peut exporter son stock au format CSV de façon automatisée (requêteur natif, script, ETL…).' },
+      { text: '<strong>Si oui</strong> : WYZ crée le SFTP et communique les accès. Le client configure son export vers le SFTP.' },
+      { text: '<strong>Si non</strong> : ouvrir un cadrage projet avec l\'équipe WYZ avant toute promesse.' },
+      { text: '<strong>Valider le format</strong> : 1 fichier par point de vente, 2 colonnes CSV (référence + quantité), export toutes les heures.' },
+    ]
+  }
+};
+
+/* Ce que permet / ne permet pas le Stock Report */
+const CAPABILITIES = {
+  allows: [
+    'Afficher le stock sur le site (module Achat)',
+    'Afficher le stock sur le site (module Devis)',
+    'Réaliser des devis express pour Wyz Tyre Check',
+  ],
+  notAllows: [
+    'Inquiries « Get Stock Price » vers le DMS',
+    'Envoi d\'orders de redistribution vers le DMS',
+  ]
+};
+
+/* Format fichier attendu */
+const FILE_FORMAT = {
+  separator: 'CSV',
+  cols: ['Référence article (EAN, CAI ou ref constructeur)', 'Quantité en stock'],
+  naming: '1 fichier par point de vente — nommage à convenir avec WYZ',
+  freq: 'Mise à jour toutes les heures minimum',
+};
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const state = { product: null, dms: null, ref: null };
+
+/* ============================================================
+   WIZARD LOGIC
+   ============================================================ */
+function pick(step, btn) {
+  // Désélectionner autres choix du même groupe
+  btn.closest('.choices').querySelectorAll('.choice').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+
+  const val = btn.dataset.val;
+
+  if (step === 1) {
+    state.product = val;
+    unlock(2);
+    // Reset downstream
+    state.dms = null; state.ref = null;
+    lock(3);
+    unselectAll(3);
+    document.getElementById('result').classList.remove('show');
+    document.getElementById('btnGo').disabled = true;
+  } else if (step === 2) {
+    state.dms = val;
+    unlock(3);
+    state.ref = null;
+    unselectAll(3);
+    document.getElementById('result').classList.remove('show');
+    document.getElementById('btnGo').disabled = true;
+  } else if (step === 3) {
+    state.ref = val;
+    document.getElementById('btnGo').disabled = false;
+  }
+}
+
+function unlock(n) { document.getElementById('q'+n).classList.remove('locked'); }
+function lock(n)   { document.getElementById('q'+n).classList.add('locked'); }
+function unselectAll(n) {
+  document.getElementById('c'+n).querySelectorAll('.choice').forEach(b => b.classList.remove('sel'));
+}
+
+function reset() {
+  state.product = null; state.dms = null; state.ref = null;
+  [1,2,3].forEach(n => unselectAll(n));
+  lock(2); lock(3);
+  document.getElementById('btnGo').disabled = true;
+  document.getElementById('result').innerHTML = '';
+  document.getElementById('result').classList.remove('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/* ============================================================
+   RENDER RESULT
+   ============================================================ */
+function showResult() {
+  const db = DB[state.dms];
+  if (!db) return;
+
+  const refWarning = state.ref === 'N';
+  const productLabel = {
+    'WTC': 'Wyz Tyre Check',
+    'WTB-AchatDevis': 'WTB Achat / Devis',
+    'WTB-Redis': 'WTB Redistribution',
+  }[state.product] || state.product;
+
+  const colorMap = { green: '#1a7a4a', orange: '#b85c00', red: '#b02020', blue: '#1a4a8a' };
+  const iconMap  = { green: '✓', orange: '⚠', red: '✕', blue: '?' };
+  const statusMap = {
+    green:  'Faisable — autonome',
+    orange: 'Faisable — assistance requise',
+    red:    'Cadrage projet requis',
+    blue:   'À qualifier',
+  };
+
+  // Étapes HTML
+  const stepsHTML = db.steps.map((s,i) => `
+    <div class="step-item">
+      <div class="step-bullet">${i+1}</div>
+      <div class="step-text">${s.text}</div>
+    </div>
+  `).join('');
+
+  // Alerte référentiel
+  const refHTML = refWarning ? `
+    <div class="ref-alert">
+      <div class="ref-alert-icon">⚠</div>
+      <div><strong>Référentiel non standard détecté.</strong> Le client doit impérativement utiliser un référentiel connu (EAN manufacturier ou référence constructeur) pour que la correspondance article fonctionne. Sans cela, le Stock Report ne peut pas être activé. Prévoir une étape de recodification ou de mapping avec le client.</div>
+    </div>
+  ` : '';
+
+  // Capabilities
+  const capsHTML = `
+    <div class="caps">
+      <div class="cap-box">
+        <div class="cap-box-label">✓ Ce que permet le Stock Report</div>
+        <ul class="cap-list">
+          ${CAPABILITIES.allows.map(c => `<li data-icon="✓">${c}</li>`).join('')}
+        </ul>
+      </div>
+      <div class="cap-box">
+        <div class="cap-box-label">✕ Ce qu'il ne permet pas</div>
+        <ul class="cap-list">
+          ${CAPABILITIES.notAllows.map(c => `<li data-icon="✕">${c}</li>`).join('')}
+        </ul>
+      </div>
+    </div>
+  `;
+
+  // Format fichier
+  const ffHTML = `
+    <div class="file-format">
+      <strong>Format du fichier stock attendu</strong>
+      <div class="ff-row">
+        <span class="ff-tag">CSV</span>
+        <span class="ff-tag">2 colonnes</span>
+        <span class="ff-tag">1 fichier / PDV</span>
+        <span class="ff-tag">Toutes les heures</span>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--muted);line-height:1.7">
+        Colonne 1 : <strong>Référence article</strong> (EAN, CAI ou ref constructeur)<br>
+        Colonne 2 : <strong>Quantité en stock</strong> au moment du dépôt<br>
+        Nommage : à convenir avec WYZ lors du paramétrage SFTP
+      </div>
+    </div>
+  `;
+
+  const html = `
+    <div class="result-card ${db.feasibility}">
+      <div class="result-top">
+        <div class="result-icon">${iconMap[db.feasibility]}</div>
+        <div class="result-headline">
+          <div class="result-status">${statusMap[db.feasibility]} · ${productLabel}</div>
+          <div class="result-title">${db.title}</div>
+        </div>
+      </div>
+      <div class="result-body">
+
+        <p style="font-size:13px;line-height:1.7;color:#444">${db.summary}</p>
+
+        <div class="action-wyz">
+          <div class="action-wyz-label">Action WYZ</div>
+          <div class="action-wyz-content">${db.actionWYZ}</div>
+        </div>
+
+        ${refHTML}
+
+        <div class="steps-list">
+          <div class="steps-title">Étapes de mise en place</div>
+          ${stepsHTML}
+        </div>
+
+        ${ffHTML}
+
+        ${capsHTML}
+
+      </div>
+    </div>
+  `;
+
+  const resultEl = document.getElementById('result');
+  resultEl.innerHTML = html;
+  resultEl.classList.add('show');
+  setTimeout(() => resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+}
+</script>
+</body>
+</html>
