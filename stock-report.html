@@ -450,7 +450,7 @@
   <!-- Header -->
   <div class="header">
     <div class="header-eyebrow">DMS Wyzard · Stock Report</div>
-    <h1>Flux - Stock Report - <em>par SFTP</em></h1>
+    <h1>Flux – Stock Report – <em>par SFTP</em></h1>
   </div>
 
   <!-- Wizard -->
@@ -568,8 +568,8 @@ const DB = {
     summary: 'Nextlane (I\'Car, Datacar, Eris, Erikauto…) ne peut pas réaliser l\'export à la place du client. Les WebServices Nextlane ne permettent pas de récupérer un stock complet régulièrement. Le client doit disposer d\'une ressource interne capable d\'écrire et planifier le script.',
     actionWYZ: 'Création SFTP + paramétrage côté WYZ. Assistance possible à la création du script.',
     steps: [
-      { text: '<strong>WYZ crée le SFTP</strong> et communique les accès au client.' },
       { text: '<strong>Vérifier que le client dispose d\'une ressource interne</strong> (développeur, technicien IT) capable de se connecter à la base de données Nextlane.' },
+      { text: '<strong>WYZ crée le SFTP</strong> et communique les accès au client.' },
       { text: '<strong>Un script doit être créé</strong> pour se connecter à la base de données locale et extraire stock + références.' },
       { text: '<strong>WYZ peut éventuellement assister</strong> à la création du script et à la planification de l\'export automatique vers le SFTP.' },
       { text: '<strong>Planifier l\'export toutes les heures</strong> via un planificateur de tâches (cron, Windows Task Scheduler…).' },
@@ -582,8 +582,8 @@ const DB = {
     summary: 'Même problématique que Nextlane. Incadea ne peut pas réaliser l\'export à la place du client. Une ressource interne est nécessaire pour créer et planifier le script d\'export.',
     actionWYZ: 'Création SFTP + paramétrage côté WYZ. Assistance possible à la création du script.',
     steps: [
-      { text: '<strong>WYZ crée le SFTP</strong> et communique les accès au client.' },
       { text: '<strong>Vérifier que le client dispose d\'une ressource interne</strong> capable de se connecter à la base Incadea.' },
+      { text: '<strong>WYZ crée le SFTP</strong> et communique les accès au client.' },
       { text: '<strong>Un script d\'export doit être développé</strong> par le client (connexion BDD locale → CSV → dépôt SFTP).' },
       { text: '<strong>WYZ peut éventuellement assister</strong> à la création du script et à la planification.' },
       { text: '<strong>Planifier l\'export toutes les heures</strong> via un planificateur de tâches.' },
