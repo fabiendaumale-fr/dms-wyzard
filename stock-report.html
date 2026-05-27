@@ -432,6 +432,16 @@
       transition: color .15s;
     }
     .nav-link:hover { color: var(--ink); }
+
+    /* Coûts */
+    .costs-block { display: flex; flex-direction: column; gap: 10px; }
+    .costs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media(max-width:500px){ .costs-grid { grid-template-columns: 1fr; } }
+    .cost-box { padding: 13px 15px; border-radius: 10px; border: 1px solid rgba(0,0,0,.07); }
+    .cost-wyz { background: #edf7f1; border-color: #a8d9be; }
+    .cost-other { background: var(--orange-bg); border-color: var(--orange-border); }
+    .cost-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+    .cost-value { font-size: 13px; font-weight: 600; color: var(--ink); line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -474,8 +484,8 @@
       </div>
       <div class="choices dms-grid" id="c2">
         <button class="choice" data-val="DCS" onclick="pick(2,this)">
-          DCS Net Reynolds
-          <span class="choice-sub">Requêteur natif disponible</span>
+          Reynolds
+          <span class="choice-sub">DCS Net</span>
         </button>
         <button class="choice" data-val="Nextlane" onclick="pick(2,this)">
           Nextlane
@@ -483,19 +493,16 @@
         </button>
         <button class="choice" data-val="Incadea" onclick="pick(2,this)">
           Incadea
-          <span class="choice-sub"></span>
         </button>
         <button class="choice" data-val="Everlog" onclick="pick(2,this)">
           Everlog
-          <span class="choice-sub">Pas d'export natif</span>
         </button>
         <button class="choice" data-val="CDK" onclick="pick(2,this)">
-          CDK Global
-          <span class="choice-sub">Keyloop, ADP…</span>
+          Keyloop
+          <span class="choice-sub">CDK, ADP, EVA…</span>
         </button>
         <button class="choice" data-val="Autre" onclick="pick(2,this)">
           Autre DMS
-          <span class="choice-sub">ou inconnu</span>
         </button>
       </div>
     </div>
@@ -628,8 +635,9 @@ const CAPABILITIES = {
     'Réaliser des devis express pour Wyz Tyre Check',
   ],
   notAllows: [
-    'Inquiries « Get Stock Price » vers le DMS',
-    'Envoi d\'orders de redistribution vers le DMS',
+    'Interrogation en temps réel du stock',
+    'Interrogation du prix par client',
+    'Envoi de commande ou bon de picking vers le DMS',
   ]
 };
 
@@ -729,7 +737,7 @@ function showResult() {
   const refHTML = refWarning ? `
     <div class="ref-alert">
       <div class="ref-alert-icon">⚠</div>
-      <div><strong>Référentiel non standard détecté.</strong> Le client doit impérativement utiliser un référentiel connu (EAN manufacturier ou référence constructeur) pour que la correspondance article fonctionne. Sans cela, le Stock Report ne peut pas être activé. Prévoir une étape de recodification ou de mapping avec le client.</div>
+      <div><strong>Référentiel non standard détecté.</strong> Le client doit impérativement utiliser un référentiel connu (EAN manufacturier ou référence constructeur) pour que la correspondance article fonctionne. Sans cela, le Stock Report ne peut pas être activé. Prévoir que le client change sa façon de saisir les refs avant de commencer le projet.</div>
     </div>
   ` : '';
 
@@ -769,6 +777,32 @@ function showResult() {
     </div>
   `;
 
+
+  // Section coûts
+  const costsExtra = {
+    DCS:      { extra: null },
+    Nextlane: { extra: 'Coût potentiel d\'un développement externe (création du script d\'export).' },
+    Incadea:  { extra: 'Coût potentiel d\'un développement externe (création du script d\'export).' },
+    Everlog:  { extra: 'Coût potentiel DMS (cadrage projet spécifique Everlog).' },
+    CDK:      { extra: 'Coût potentiel DMS (cadrage projet spécifique CDK Global / Keyloop).' },
+    Autre:    { extra: 'Coût potentiel d\'un développement externe si script nécessaire, ou coût DMS si cadrage projet.' },
+  };
+  const costExtra = costsExtra[state.dms]?.extra;
+  const costsHTML = `
+    <div class="costs-block">
+      <div class="steps-title">Coûts</div>
+      <div class="costs-grid">
+        <div class="cost-box cost-wyz">
+          <div class="cost-label">Coût WYZ</div>
+          <div class="cost-value">Inclus dans l'offre commerciale</div>
+        </div>
+        ${costExtra ? `<div class="cost-box cost-other">
+          <div class="cost-label">Coût additionnel potentiel</div>
+          <div class="cost-value">${costExtra}</div>
+        </div>` : ''}
+      </div>
+    </div>
+  `;
   const html = `
     <div class="result-card ${db.feasibility}">
       <div class="result-top">
@@ -795,6 +829,8 @@ function showResult() {
         </div>
 
         ${ffHTML}
+
+        ${costsHTML}
 
         ${capsHTML}
 
