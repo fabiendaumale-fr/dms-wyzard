@@ -856,8 +856,12 @@ function showResult() {
     Autre:    { extra: 'Coût potentiel d\'un développement externe si script nécessaire, ou coût DMS si cadrage projet.' },
   };
   let costExtra = costsExtra[state.dms]?.extra;
-  if (needsTech && !hasTech && state.dms !== 'Everlog' && state.dms !== 'CDK') {
-    costExtra = 'Coût potentiel d\'un prestataire externe (développement + maintenance du script d\'export) — à la charge du client.';
+  if (needsTech) {
+    if (hasTech) {
+      costExtra = 'Pas de coût externe si le référent est capable de faire l\'extraction automatique.';
+    } else if (state.dms !== 'Everlog' && state.dms !== 'CDK') {
+      costExtra = 'Coût potentiel d\'un prestataire externe (développement + maintenance du script d\'export) — à la charge du client.';
+    }
   }
   const costsHTML = `
     <div class="costs-block">
@@ -867,7 +871,7 @@ function showResult() {
           <div class="cost-label">Coût WYZ</div>
           <div class="cost-value">Inclus dans l'offre commerciale</div>
         </div>
-        ${costExtra ? `<div class="cost-box cost-other">
+        ${costExtra ? `<div class="cost-box ${(needsTech && hasTech) ? 'cost-wyz' : 'cost-other'}">
           <div class="cost-label">Coût additionnel potentiel</div>
           <div class="cost-value">${costExtra}</div>
         </div>` : ''}
