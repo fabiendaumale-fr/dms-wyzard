@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DMS Wyzard — Flux Stock & Interfaces</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#faf9f7;--ink:#111110;--muted:#888580;--border:#e5e3de;--border2:#d0cdc6;--card:#ffffff;
+      --ff:'Geist',sans-serif;--fi:'Instrument Serif',serif;--fm:'Geist Mono',monospace;
+      --green:#166534;--green-bg:#f0fdf4;--green-b:#bbf7d0;
+      --orange:#9a3412;--orange-bg:#fff7ed;--orange-b:#fed7aa;
+      --red:#991b1b;--red-bg:#fef2f2;--red-b:#fecaca;
+      --blue:#1e3a5f;--blue-bg:#eff6ff;--blue-b:#bfdbfe;
+      --amber:#78350f;--amber-bg:#fffbeb;--amber-b:#fde68a;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body{background:var(--bg);color:var(--ink);font-family:var(--ff);font-size:14px;line-height:1.6;min-height:100vh}
+    .topbar{position:sticky;top:0;z-index:100;background:rgba(250,249,247,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);height:52px;display:flex;align-items:center;gap:12px;padding:0 28px}
+    .tbar-logo{font-family:var(--fi);font-size:18px;letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
+    .tbar-logo em{font-style:italic;color:var(--muted)}
+    .tbar-sep{flex:1}
+    .tbar-link{font-size:12px;font-weight:500;color:var(--muted);text-decoration:none;transition:color .15s}
+    .tbar-link:hover{color:var(--ink)}
+    .shell{max-width:780px;margin:0 auto;padding:48px 28px 100px}
+    .hdr{margin-bottom:44px}
+    .hdr-label{font-family:var(--fm);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+    .hdr h1{font-family:var(--fi);font-size:clamp(32px,6vw,48px);font-weight:400;letter-spacing:-.5px;line-height:1.1}
+    .hdr h1 em{font-style:italic}
+    .hdr-desc{margin-top:14px;font-size:14px;color:var(--muted);line-height:1.7;max-width:560px;border-left:2px solid var(--border2);padding-left:16px}
+    .wizard{border:1px solid var(--border);border-radius:16px;overflow:hidden;background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.04)}
+    .wstep{padding:22px 26px;border-bottom:1px solid var(--border);transition:opacity .2s,background .2s}
+    .wstep:last-of-type{border-bottom:none}
+    .wstep.locked{opacity:.35;pointer-events:none;background:var(--bg)}
+    .wstep.hidden{display:none}
+    .wstep-head{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px}
+    .wstep-num{width:24px;height:24px;flex-shrink:0;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--fm);font-size:11px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+    .locked .wstep-num{background:var(--border2)}
+    .wstep-q{font-size:14px;font-weight:600;letter-spacing:-.2px;line-height:1.4}
+    .wstep-hint{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+    .choices{display:flex;flex-wrap:wrap;gap:8px}
+    .choices.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+    .choices.yn .ch{border-radius:999px;padding:7px 18px}
+    .ch{display:flex;flex-direction:column;gap:1px;padding:9px 15px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);color:var(--ink);font-family:var(--ff);font-size:13px;font-weight:500;cursor:pointer;transition:all .12s;text-align:left}
+    .ch:hover{border-color:var(--ink);background:#fff}
+    .ch.sel{background:var(--ink);color:#fff;border-color:var(--ink)}
+    .ch-sub{font-size:11px;font-weight:400;color:var(--muted);transition:color .12s}
+    .ch.sel .ch-sub{color:rgba(255,255,255,.55)}
+    .wactions{padding:18px 26px;border-top:1px solid var(--border);background:var(--bg);display:flex;gap:10px}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:10px;border:1.5px solid var(--border2);background:var(--card);color:var(--ink);font-family:var(--ff);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;text-decoration:none}
+    .btn:hover{border-color:var(--ink)}
+    .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+    .btn.primary:hover{background:#2a2a28}
+    .btn.primary:disabled{opacity:.3;cursor:not-allowed}
+    .btn.ghost{color:var(--muted);border-color:transparent;background:transparent}
+    .btn.ghost:hover{color:var(--ink);border-color:var(--border)}
+    #result{display:none;margin-top:24px}
+    #result.show{display:flex;flex-direction:column;gap:16px}
+    .rblock{border-radius:14px;border:1.5px solid;overflow:hidden}
+    .rblock.green{border-color:var(--green-b);background:var(--green-bg)}
+    .rblock.orange{border-color:var(--orange-b);background:var(--orange-bg)}
+    .rblock.red{border-color:var(--red-b);background:var(--red-bg)}
+    .rblock.blue{border-color:var(--blue-b);background:var(--blue-bg)}
+    .rblock.amber{border-color:var(--amber-b);background:var(--amber-bg)}
+    .rblock.neutral{border-color:var(--border2);background:var(--card)}
+    .rblock-head{padding:16px 20px;border-bottom:1px solid rgba(0,0,0,.08);display:flex;align-items:flex-start;gap:12px}
+    .rblock-icon{font-size:18px;flex-shrink:0;margin-top:1px}
+    .rblock-eyebrow{font-family:var(--fm);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+    .rblock-title{font-family:var(--fi);font-size:18px;letter-spacing:-.2px;line-height:1.25}
+    .rblock-body{padding:16px 20px;display:flex;flex-direction:column;gap:14px}
+    .rsummary{font-size:13px;color:#333;line-height:1.7}
+    .action-row{display:flex;gap:10px;padding:12px 14px;border-radius:10px;background:rgba(0,0,0,.04);border:1px solid rgba(0,0,0,.07);font-size:13px}
+    .action-row .al{font-family:var(--fm);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);flex-shrink:0;padding-top:1px}
+    .action-row .av{font-weight:600;line-height:1.5}
+    .steps-label{font-family:var(--fm);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+    .step-row{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(0,0,0,.06);align-items:flex-start}
+    .step-row:last-child{border-bottom:none;padding-bottom:0}
+    .step-n{width:22px;height:22px;flex-shrink:0;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--fm);font-size:10px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+    .step-t{font-size:13px;line-height:1.65}
+    .step-t strong{font-weight:600}
+    .alert{display:flex;gap:10px;padding:12px 14px;border-radius:10px;border:1.5px solid;font-size:13px;line-height:1.6}
+    .alert.warn{border-color:var(--orange-b);background:var(--orange-bg)}
+    .alert.info{border-color:var(--blue-b);background:var(--blue-bg)}
+    .alert.ok{border-color:var(--green-b);background:var(--green-bg)}
+    .alert-icon{flex-shrink:0;font-size:15px}
+    .costs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:520px){.costs-grid{grid-template-columns:1fr}}
+    .cost-box{padding:12px 14px;border-radius:10px;border:1px solid rgba(0,0,0,.07)}
+    .cost-box.wyz{background:var(--green-bg);border-color:var(--green-b)}
+    .cost-box.ext{background:var(--orange-bg);border-color:var(--orange-b)}
+    .cost-box.free{background:var(--green-bg);border-color:var(--green-b)}
+    .cost-box.dms{background:var(--amber-bg);border-color:var(--amber-b)}
+    .cost-label{font-family:var(--fm);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+    .cost-value{font-size:13px;font-weight:600;line-height:1.5}
+    .ws-caps{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:520px){.ws-caps{grid-template-columns:1fr}}
+    .ws-cap-box{padding:12px 14px;border-radius:10px;background:rgba(0,0,0,.03);border:1px solid rgba(0,0,0,.07)}
+    .ws-cap-label{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+    .ws-cap-list{list-style:none;display:flex;flex-direction:column;gap:4px}
+    .ws-cap-list li{font-size:12px;display:flex;gap:6px}
+    .ws-cap-list li::before{content:attr(data-i);flex-shrink:0}
+    .ff-box{padding:12px 14px;border-radius:10px;background:rgba(0,0,0,.03);border:1px solid rgba(0,0,0,.07);font-size:12px;line-height:1.7}
+    .ff-tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+    .ff-tag{font-family:var(--fm);font-size:11px;padding:2px 9px;border-radius:5px;background:var(--ink);color:#fff}
+    .nav{display:flex;gap:16px;justify-content:center;margin-top:32px}
+    .nav a{font-size:12px;font-weight:500;color:var(--muted);text-decoration:none;transition:color .15s}
+    .nav a:hover{color:var(--ink)}
+  </style>
+</head>
+<body>
+<header class="topbar">
+  <div class="tbar-logo">DMS Wyzard <em>&middot;</em> Flux Stock &amp; Interfaces</div>
+  <div class="tbar-sep"></div>
+  <a class="tbar-link" href="index.html">Wizard DMS</a>
+  &nbsp;&middot;&nbsp;
+  <a class="tbar-link" href="editor.html">&#201;diteur</a>
+</header>
+<div class="shell">
+  <div class="hdr">
+    <div class="hdr-label">DMS Wyzard &middot; Guide commercial</div>
+    <h1>Flux Stock <em>&amp;</em> Interfaces DMS</h1>
+    <p class="hdr-desc">WTC &middot; WTB Achat/Devis &middot; WTB Redistribution &mdash; Flux SFTP et WebServices selon produit et DMS client.</p>
+  </div>
+  <div class="wizard">
+    <!-- Q1 : Produit -->
+    <div class="wstep" id="q1">
+      <div class="wstep-head"><div class="wstep-num">1</div><div><div class="wstep-q">Quel produit est concern&#233; ?</div></div></div>
+      <div class="choices" id="c1">
+        <button class="ch" data-val="WTC" onclick="pick(1,this)">Wyz Tyre Check</button>
+        <button class="ch" data-val="WTB" onclick="pick(1,this)">WTB Achat / Devis</button>
+        <button class="ch" data-val="WTBRedis" onclick="pick(1,this)">WTB Redistribution</button>
+      </div>
+    </div>
+    <!-- Q2 : VPN -->
+    <div class="wstep locked" id="q2">
+      <div class="wstep-head"><div class="wstep-num">2</div><div><div class="wstep-q">Y a-t-il un VPN &#224; mettre en place ?</div><div class="wstep-hint">Entre le r&#233;seau client et l&#8217;infrastructure WYZ.</div></div></div>
+      <div class="choices yn" id="c2">
+        <button class="ch" data-val="N" onclick="pick(2,this)">Non &mdash; acc&#232;s direct</button>
+        <button class="ch" data-val="Y" onclick="pick(2,this)">Oui &mdash; VPN n&#233;cessaire</button>
+      </div>
+    </div>
+    <!-- Q3 : DMS -->
+    <div class="wstep locked" id="q3">
+      <div class="wstep-head"><div class="wstep-num">3</div><div><div class="wstep-q">Quel DMS utilise le client ?</div></div></div>
+      <div class="choices grid" id="c3"></div>
+    </div>
+    <!-- Q4 : Sp&#233;cifique DMS (conditionnel) -->
+    <div class="wstep locked hidden" id="q4">
+      <div class="wstep-head"><div class="wstep-num" id="num4">4</div><div><div class="wstep-q" id="q4-q"></div><div class="wstep-hint" id="q4-hint"></div></div></div>
+      <div class="choices yn" id="c4"></div>
+    </div>
+    <!-- Q5 : R&#233;f&#233;rent technique (conditionnel) -->
+    <div class="wstep locked hidden" id="q5">
+      <div class="wstep-head"><div class="wstep-num" id="num5">5</div><div><div class="wstep-q">Le client dispose-t-il d&#8217;un r&#233;f&#233;rent technique interne capable de faire des extractions sur sa base de donn&#233;es ?</div><div class="wstep-hint">N&#233;cessaire pour automatiser l&#8217;export stock vers le SFTP.</div></div></div>
+      <div class="choices yn" id="c5">
+        <button class="ch" data-val="Y" onclick="pick(5,this)">&#10003; Oui &mdash; ressource interne disponible</button>
+        <button class="ch" data-val="N" onclick="pick(5,this)">&#10007; Non &mdash; pas de ressource technique</button>
+      </div>
+    </div>
+    <!-- Q6 : R&#233;f&#233;rentiel -->
+    <div class="wstep locked" id="q6">
+      <div class="wstep-head"><div class="wstep-num" id="num6">6</div><div><div class="wstep-q">Le client utilise-t-il un r&#233;f&#233;rentiel connu ?</div><div class="wstep-hint">EAN manufacturier ou r&#233;f&#233;rence constructeur &mdash; requis pour le Stock Report.</div></div></div>
+      <div class="choices yn" id="c6">
+        <button class="ch" data-val="Y" onclick="pick(6,this)">&#10003; Oui &mdash; EAN ou ref constructeur</button>
+        <button class="ch" data-val="N" onclick="pick(6,this)">&#10007; Non &mdash; r&#233;f&#233;rentiel interne</button>
+      </div>
+    </div>
+    <div class="wactions">
+      <button class="btn primary" id="btnGo" disabled onclick="showResult()">Voir la proc&#233;dure &#8594;</button>
+      <button class="btn ghost" onclick="resetAll()">R&#233;initialiser</button>
+    </div>
+  </div>
+  <div id="result"></div>
+  <div class="nav">
+    <a href="index.html">&#8592; Wizard DMS complet</a>
+    <a href="tree.html">Arbre d&#233;cisionnel</a>
+    <a href="editor.html">&#201;diteur</a>
+  </div>
+</div>
+<script>
+/* ============================================================
+   BASE DE CONNAISSANCE
+   ============================================================ */
+const DMS_LIST = {
+  simple:[
+    {val:'DCS',name:'Reynolds',sub:'DCS Net'},
+    {val:'Nextlane',name:'Nextlane',sub:"I'Car, Datacar, Eris, Ericauto\u2026"},
+    {val:'Incadea',name:'Incadea'},
+    {val:'Everlog',name:'Everlog'},
+    {val:'CDK',name:'Keyloop',sub:'CDK, ADP, EVA\u2026'},
+    {val:'Autre',name:'Autre DMS'},
+  ],
+  redis:[
+    {val:'DCSNet',name:'Reynolds',sub:'DCS Net'},
+    {val:'ICarNextlane',name:"Nextlane I'Car"},
+    {val:'DatacarNextlane',name:'Nextlane Datacar'},
+    {val:'EricautoNextlane',name:'Nextlane Ericauto'},
+    {val:'WinProPieces',name:'WinPro Pi\u00e8ces',sub:'Inovaxo'},
+    {val:'WinProPneu',name:'WinPro Pneu',sub:'Inovaxo'},
+    {val:'Incadea',name:'Incadea'},
+    {val:'Carbase',name:'Carbase'},
+    {val:'Everlog',name:'Everlog'},
+    {val:'ADP',name:'ADP',sub:'Keyloop'},
+    {val:'Autre',name:'Autre DMS'},
+  ],
+};
+
+const NEEDS_TECH=['Nextlane','ICarNextlane','DatacarNextlane','EricautoNextlane','WinProPieces','WinProPneu','Incadea','Carbase','Autre'];
+
+const SPECIFIC_Q={
+  DCSNet:{
+    q:"Le client a-t-il d\u00e9j\u00e0 r\u00e9alis\u00e9 une interface WebService avec un partenaire ?",
+    hint:"Si oui : abonnement WS d\u00e9j\u00e0 actif, pas de co\u00fbt suppl\u00e9mentaire.",
+    opts:[{val:'Y',label:'Oui \u2014 interface WS existante'},{val:'N',label:'Non \u2014 premi\u00e8re interface WS'}]
+  },
+  Everlog:{
+    q:"Le client est-il en version SaaS ou On-Premises ?",
+    hint:"D\u00e9termine la disponibilit\u00e9 des WebServices.",
+    opts:[{val:'SaaS',label:'SaaS \u2014 h\u00e9berg\u00e9 par Everlog'},{val:'OnPrem',label:'On-Premises \u2014 install\u00e9 en local'}]
+  },
+};
+
+/* FTP helpers */
+const ftpStepsNeedsTech=(name,s)=>s.techRef==='Y'?[
+  {t:`<strong>Cadrage avec le r\u00e9f\u00e9rent technique</strong> du client et l\u2019\u00e9quipe projet WYZ : acc\u00e8s BDD ${name}, format, planning.`},
+  {t:'<strong>WYZ cr\u00e9e le SFTP</strong> et communique les acc\u00e8s.'},
+  {t:`<strong>Un script est cr\u00e9\u00e9 par le r\u00e9f\u00e9rent</strong> pour se connecter \u00e0 la base ${name} et exporter stock + r\u00e9f\u00e9rences. WYZ peut assister \u00e0 la cr\u00e9ation et la planification.`},
+  {t:'<strong>Planifier l\u2019export toutes les heures</strong> via un planificateur de t\u00e2ches.'},
+  {t:'<strong>Valider le format</strong> : 1 fichier par PDV, 2 colonnes CSV, nommage convenu.'},
+]:[
+  {t:'<strong>Le client doit identifier un prestataire externe</strong>. WYZ peut orienter mais co\u00fbt et maintenance restent \u00e0 sa charge.'},
+  {t:'<strong>WYZ cr\u00e9e le SFTP</strong> d\u00e8s que le prestataire est identifi\u00e9.'},
+  {t:'<strong>Le prestataire cr\u00e9e le script</strong> de connexion BDD et d\u2019export automatique vers le SFTP.'},
+  {t:'<strong>Planifier l\u2019export toutes les heures</strong>.'},
+  {t:'<strong>Valider le format</strong> : 1 fichier par PDV, 2 colonnes CSV.'},
+];
+
+const ftpCostsNeedsTech=(s)=>[
+  {type:'wyz',label:'Co\u00fbt WYZ',value:"Inclus dans l\u2019offre commerciale"},
+  s.techRef==='Y'
+    ?{type:'free',label:'Co\u00fbt externe',value:"Pas de co\u00fbt externe si le r\u00e9f\u00e9rent est capable de faire l\u2019extraction automatique."}
+    :{type:'ext', label:'Co\u00fbt externe',value:"Co\u00fbt prestataire externe (d\u00e9veloppement + maintenance) \u2014 \u00e0 la charge du client."},
+];
+
+const FTP_DB={
+  DCS:{ftp:'green',ftpTitle:"Export possible via le requ\u00eateur natif",ftpSummary:"DCS Net Reynolds dispose d\u2019un requ\u00eateur natif permettant d\u2019automatiser l\u2019export de stock. WYZ peut accompagner si le client ne ma\u00eetrise pas l\u2019outil.",actionWYZ:"Cr\u00e9ation SFTP + param\u00e9trage c\u00f4t\u00e9 WYZ.",
+    ftpSteps:()=>[
+      {t:'<strong>WYZ cr\u00e9e le SFTP</strong> et communique les acc\u00e8s (h\u00f4te, identifiants, nommage de fichier).'},
+      {t:'<strong>Le client configure le requ\u00eateur natif DCS</strong> pour exporter le stock en CSV, toutes les heures.'},
+      {t:'<strong>Si le client ne ma\u00eetrise pas le requ\u00eateur</strong>, WYZ peut l\u2019assister.'},
+      {t:'<strong>Valider le format</strong> : 1 fichier par PDV, 2 colonnes CSV, nommage convenu.'},
+    ],
+    ftpCosts:()=>[{type:'wyz',label:'Co\u00fbt WYZ',value:"Inclus dans l\u2019offre commerciale"},{type:'free',label:'Co\u00fbt DMS',value:"Pas de co\u00fbt DCS."}],
+  },
+  Nextlane:{ftp:'orange',ftpTitle:"Export possible \u2014 ressource interne client requise",ftpSummary:"Nextlane ne peut pas r\u00e9aliser l\u2019export. Les WS ne permettent pas de r\u00e9cup\u00e9rer un stock complet r\u00e9guli\u00e8rement. Une ressource interne est n\u00e9cessaire.",actionWYZ:"Cr\u00e9ation SFTP + param\u00e9trage. Assistance possible \u00e0 la cr\u00e9ation du script.",
+    ftpSteps:(s)=>ftpStepsNeedsTech('Nextlane',s),ftpCosts:(s)=>ftpCostsNeedsTech(s)},
+  Incadea:{ftp:'orange',ftpTitle:"Export possible \u2014 ressource interne client requise",ftpSummary:"M\u00eame probl\u00e9matique que Nextlane. Une ressource interne ou prestataire est n\u00e9cessaire.",actionWYZ:"Cr\u00e9ation SFTP + param\u00e9trage. Assistance possible.",
+    ftpSteps:(s)=>ftpStepsNeedsTech('Incadea',s),ftpCosts:(s)=>ftpCostsNeedsTech(s)},
+  Everlog:{ftp:'red',ftpTitle:"N\u00e9cessite un cadrage projet",ftpSummary:"Everlog ne dispose d\u2019aucune solution d\u2019export autonome. Un cadrage projet est n\u00e9cessaire avant tout engagement.",actionWYZ:"Escalader \u00e0 l\u2019\u00e9quipe projet WYZ avant toute promesse.",
+    ftpSteps:()=>[
+      {t:"<strong>Ne pas s\u2019engager</strong> sur un d\u00e9lai sans validation de l\u2019\u00e9quipe projet WYZ."},
+      {t:"<strong>Ouvrir un cadrage projet</strong> avec l\u2019\u00e9quipe WYZ."},
+      {t:"<strong>Informer le client</strong> qu\u2019une phase de cadrage est n\u00e9cessaire."},
+    ],
+    ftpCosts:()=>[{type:'wyz',label:'Co\u00fbt WYZ',value:"Inclus dans l\u2019offre commerciale"},{type:'dms',label:'Co\u00fbt potentiel DMS',value:"Co\u00fbt cadrage projet Everlog \u00e0 \u00e9tudier."}],
+  },
+  CDK:{ftp:'red',ftpTitle:"N\u00e9cessite un cadrage projet",ftpSummary:"CDK Global (Keyloop, ADP\u2026) ne dispose pas de solution standard pour des exports autonomes.",actionWYZ:"Escalader \u00e0 l\u2019\u00e9quipe projet WYZ avant toute promesse.",
+    ftpSteps:()=>[
+      {t:"<strong>Ne pas s\u2019engager</strong> sans validation de l\u2019\u00e9quipe projet WYZ."},
+      {t:"<strong>Ouvrir un cadrage projet</strong>."},
+      {t:"<strong>Informer le client</strong> qu\u2019une phase de cadrage est n\u00e9cessaire."},
+    ],
+    ftpCosts:()=>[{type:'wyz',label:'Co\u00fbt WYZ',value:"Inclus dans l\u2019offre commerciale"},{type:'dms',label:'Co\u00fbt potentiel DMS',value:"Co\u00fbt cadrage projet CDK/Keyloop \u00e0 \u00e9tudier."}],
+  },
+  Autre:{ftp:'blue',ftpTitle:"\u00c0 qualifier avec le client",ftpSummary:"V\u00e9rifier que le client peut automatiser l\u2019export. Sinon, cadrage projet.",actionWYZ:"Cr\u00e9ation SFTP si export possible, sinon escalader.",
+    ftpSteps:(s)=>[
+      {t:"<strong>Demander au client</strong> s\u2019il peut exporter automatiquement (requ\u00eateur, script, ETL\u2026)."},
+      s.techRef==='Y'?{t:"<strong>Ressource interne disponible</strong> : WYZ cr\u00e9e le SFTP et assiste si besoin."}:{t:"<strong>Pas de ressource interne</strong> : identifier un prestataire ou ouvrir un cadrage projet."},
+      {t:"<strong>Valider le format</strong> : 1 fichier par PDV, 2 colonnes CSV, toutes les heures."},
+    ],
+    ftpCosts:(s)=>[
+      {type:'wyz',label:'Co\u00fbt WYZ',value:"Inclus dans l\u2019offre commerciale"},
+      s.techRef==='N'?{type:'ext',label:'Co\u00fbt externe',value:"Co\u00fbt prestataire ou d\u00e9veloppement selon r\u00e9sultat qualification."}:{type:'free',label:'Co\u00fbt externe',value:"Pas de co\u00fbt externe si le r\u00e9f\u00e9rent est capable de faire l\u2019extraction automatique."},
+    ],
+  },
+};
+/* Redis DMS FTP — r\u00e9utilisation */
+FTP_DB.DCSNet={...FTP_DB.DCS,ftpSteps:()=>[
+  {t:'<strong>WYZ cr\u00e9e le SFTP</strong> et communique les acc\u00e8s.'},
+  {t:'<strong>Le client configure le requ\u00eateur natif DCS</strong> pour exporter le stock en CSV, toutes les heures.'},
+  {t:'<strong>Si besoin</strong>, WYZ peut assister \u00e0 la cr\u00e9ation de la requ\u00eate.'},
+  {t:'<strong>Valider le format</strong> : 1 fichier par PDV, 2 colonnes CSV.'},
+]};
+FTP_DB.ICarNextlane={...FTP_DB.Nextlane};
+FTP_DB.DatacarNextlane={...FTP_DB.Nextlane};
+FTP_DB.EricautoNextlane={...FTP_DB.Nextlane};
+FTP_DB.WinProPieces={...FTP_DB.Nextlane,ftpSummary:"WinPro Pi\u00e8ces (Inovaxo) : m\u00eame contrainte que Nextlane pour l\u2019export stock. Une ressource interne est n\u00e9cessaire."};
+FTP_DB.WinProPneu={...FTP_DB.Nextlane,ftpSummary:"WinPro Pneu (Inovaxo) : m\u00eame contrainte que Nextlane pour l\u2019export stock. Une ressource interne est n\u00e9cessaire."};
+FTP_DB.Carbase={ftp:'orange',ftpTitle:"Export \u00e0 automatiser \u2014 ressource interne ou prestataire",ftpSummary:"Pas de solution d\u2019export natif connue pour Carbase.",actionWYZ:"Cr\u00e9ation SFTP + assistance script si possible.",
+  ftpSteps:(s)=>ftpStepsNeedsTech('Carbase',s),ftpCosts:(s)=>ftpCostsNeedsTech(s)};
+FTP_DB.ADP={ftp:'amber',ftpTitle:"Export stock \u00e0 qualifier \u2014 WS tr\u00e8s on\u00e9reux",ftpSummary:"ADP/Keyloop : les WS sont disponibles mais tr\u00e8s on\u00e9reux, validation direction commerciale WYZ obligatoire. Pour l\u2019export stock, qualifier les capacit\u00e9s du client.",actionWYZ:"Validation direction commerciale WYZ obligatoire. Cr\u00e9ation SFTP + Stock Report activables.",
+  ftpSteps:()=>[
+    {t:"\u26a0 <strong>Valider avec la direction commerciale WYZ</strong> avant tout engagement sur les WS Keyloop."},
+    {t:"<strong>WYZ cr\u00e9e le SFTP</strong> \u2014 Stock Report activable imm\u00e9diatement."},
+    {t:"<strong>Le client configure les grilles tarifaires</strong> manuellement dans WYZ en attendant."},
+    {t:"<strong>Qualifier les capacit\u00e9s d\u2019export stock</strong> du client."},
+  ],
+  ftpCosts:()=>[{type:'wyz',label:'Co\u00fbt WYZ',value:"\u00c0 valider avec la direction commerciale WYZ."},{type:'dms',label:'Co\u00fbt DMS',value:"WS Keyloop tr\u00e8s on\u00e9reux \u2014 tarif \u00e0 obtenir. D\u00e9lai important."}],
+};
+
+/* WS DB (uniquement WTB Redis) */
+const WS_DB={
+  DCSNet:{ws:'green',wsTitle:'WebServices disponibles',wsSummary:"WS Reynolds stables et int\u00e9gr\u00e9s WYZ. Si le client a d\u00e9j\u00e0 une interface WS avec un partenaire, l\u2019abonnement est actif. Sinon, souscrire aupr\u00e8s de Reynolds.",wsAllows:['Disponibilit\u00e9s temps r\u00e9el','Prix personnalis\u00e9s par client','Prise de commande vers DMS'],wsNotAllows:[],
+    wsSteps:(q4)=>[
+      {t:q4==='N'?"<strong>Le client contacte Reynolds</strong> pour souscrire l\u2019abonnement WS \u2014 d\u00e9lai \u00e0 anticiper.":"<strong>Abonnement WS actif \u2713</strong> \u2014 pas de d\u00e9marche suppl\u00e9mentaire."},
+      {t:"<strong>WYZ param\u00e8tre les WS Reynolds</strong> : endpoints, authentification, mapping."},
+      {t:"<strong>Valider en recette</strong> : Get Dispo, Get Price, Order."},
+    ],
+    wsCosts:(q4)=>q4==='N'?[{type:'dms',label:'Co\u00fbt DMS',value:"Abonnement WS Reynolds \u2014 tarif \u00e0 demander \u00e0 Reynolds."}]:[{type:'free',label:'Co\u00fbt DMS',value:"Aucun \u2014 abonnement d\u00e9j\u00e0 actif."}],
+  },
+  ICarNextlane:{ws:'green',wsTitle:'WebServices disponibles',wsSummary:"WS I'Car int\u00e9gr\u00e9s WYZ. Prix et dispos uniquement \u2014 la prise de commande n\u2019est pas support\u00e9e sur I'Car.",wsAllows:['Disponibilit\u00e9s temps r\u00e9el','Prix personnalis\u00e9s par client'],wsNotAllows:["Prise de commande vers DMS (non disponible sur I'Car)"],
+    wsSteps:()=>[
+      {t:"<strong>WYZ param\u00e8tre les WS I'Car</strong>."},
+      {t:"<strong>Informer le client</strong> que la prise de commande n\u2019est pas disponible \u2014 pr\u00e9voir un circuit alternatif."},
+      {t:"<strong>Valider</strong> : Get Dispo, Get Price."},
+    ],
+    wsCosts:()=>[{type:'free',label:'Co\u00fbt DMS',value:"Aucun co\u00fbt Nextlane."}],
+  },
+  DatacarNextlane:{ws:'orange',wsTitle:"WebServices en cours d\u2019int\u00e9gration WYZ",wsSummary:"WS Datacar disponibles c\u00f4t\u00e9 Nextlane mais pas encore int\u00e9gr\u00e9s c\u00f4t\u00e9 WYZ. D\u00e9veloppement \u00e0 pr\u00e9voir. Pas de prise de commande.",wsAllows:['Disponibilit\u00e9s (\u00e0 venir)','Prix personnalis\u00e9s (\u00e0 venir)'],wsNotAllows:["Int\u00e9gration WYZ non encore disponible","Prise de commande non disponible"],
+    wsSteps:()=>[
+      {t:"<strong>Confirmer avec l\u2019\u00e9quipe WYZ</strong> le d\u00e9lai d\u2019int\u00e9gration WS Datacar."},
+      {t:"<strong>Stock Report activ\u00e9 en attendant</strong> \u2014 pas de rupture de service."},
+    ],
+    wsCosts:()=>[{type:'ext',label:'Co\u00fbt WYZ',value:"D\u00e9veloppement \u00e0 pr\u00e9voir \u2014 \u00e0 chiffrer avec l\u2019\u00e9quipe WYZ."}],
+  },
+  EricautoNextlane:{ws:'red',wsTitle:"Pas d\u2019interface WS possible actuellement",wsSummary:"Ericauto ne supporte pas les WS \u00e0 ce jour. Ouverture possible fin 2026. Stock Report uniquement.",wsAllows:[],wsNotAllows:["WebServices non disponibles (possiblement fin 2026)","Prise de commande impossible"],
+    wsSteps:()=>[
+      {t:"<strong>Informer le client</strong> : aucun WS Ericauto disponible \u00e0 ce jour."},
+      {t:"<strong>Grilles tarifaires</strong> \u00e0 configurer manuellement dans WYZ."},
+      {t:"<strong>Prendre note</strong> du planning Ericauto pour anticiper fin 2026."},
+    ],
+    wsCosts:()=>[{type:'free',label:'Co\u00fbt DMS',value:"Aucun \u2014 Stock Report uniquement."}],
+  },
+  WinProPieces:{ws:'blue',wsTitle:"WebServices en cours d\u2019int\u00e9gration WYZ",wsSummary:"WS WinPro Pi\u00e8ces (Inovaxo) disponibles, int\u00e9gration en cours c\u00f4t\u00e9 WYZ. Pas de co\u00fbt sp\u00e9cifique annonc\u00e9.",wsAllows:['Disponibilit\u00e9s (en cours)','Prix personnalis\u00e9s (en cours)'],wsNotAllows:[],
+    wsSteps:()=>[{t:"<strong>Confirmer le d\u00e9lai</strong> avec l\u2019\u00e9quipe WYZ."},{t:"<strong>Stock Report activ\u00e9 en attendant.</strong>"}],
+    wsCosts:()=>[{type:'free',label:'Co\u00fbt DMS',value:"Pas de co\u00fbt sp\u00e9cifique Inovaxo annonc\u00e9."}],
+  },
+  WinProPneu:{ws:'orange',wsTitle:"WebServices disponibles \u2014 d\u00e9lai fournisseur",wsSummary:"Le client doit r\u00e9cup\u00e9rer les WS sp\u00e9cifiques WinPro Pneu aupr\u00e8s d\u2019Inovaxo. D\u00e9lai \u00e0 anticiper.",wsAllows:['Disponibilit\u00e9s temps r\u00e9el','Prix personnalis\u00e9s'],wsNotAllows:[],
+    wsSteps:()=>[
+      {t:"<strong>Le client contacte Inovaxo</strong> pour r\u00e9cup\u00e9rer les WS WinPro Pneu."},
+      {t:"<strong>WYZ param\u00e8tre d\u00e8s r\u00e9ception</strong> des credentials Inovaxo."},
+    ],
+    wsCosts:()=>[{type:'dms',label:'Co\u00fbt DMS',value:"Co\u00fbt potentiel Inovaxo pour la fourniture des WS \u2014 \u00e0 demander."}],
+  },
+  Incadea:{ws:'red',wsTitle:"Pas de WebServices connus",wsSummary:"Aucun WS connu pour Incadea. Stock Report uniquement. Grilles tarifaires manuelles.",wsAllows:[],wsNotAllows:["WebServices non disponibles \u00e0 notre connaissance"],
+    wsSteps:()=>[{t:"<strong>Informer le client</strong> : aucun WS Incadea \u00e0 notre connaissance."},{t:"<strong>Grilles tarifaires</strong> \u00e0 configurer manuellement dans WYZ."}],
+    wsCosts:()=>[{type:'free',label:'Co\u00fbt DMS',value:"Aucun \u2014 Stock Report uniquement."}],
+  },
+  Carbase:{ws:'red',wsTitle:"Pas de WebServices connus",wsSummary:"Aucun WS connu pour Carbase. Stock Report uniquement.",wsAllows:[],wsNotAllows:["WebServices non disponibles \u00e0 notre connaissance"],
+    wsSteps:()=>[{t:"<strong>Informer le client</strong> : aucun WS Carbase \u00e0 notre connaissance."},{t:"<strong>Grilles tarifaires</strong> \u00e0 configurer manuellement dans WYZ."}],
+    wsCosts:()=>[{type:'free',label:'Co\u00fbt DMS',value:"Aucun \u2014 Stock Report uniquement."}],
+  },
+  Everlog:{ws:'orange',wsTitle:"WebServices selon version",wsSummary:"SaaS : pas d\u2019offre WS connue, client peut se renseigner. On-Premises : WS possiblement disponibles ou d\u00e9veloppables \u2014 cadrage projet requis.",wsAllows:[],wsNotAllows:[],
+    wsSteps:(q4)=>q4==='SaaS'?[
+      {t:"<strong>Informer le client</strong> : pas d\u2019offre WS SaaS connue chez Everlog."},
+      {t:"<strong>Le client peut se renseigner</strong> aupr\u00e8s d\u2019Everlog."},
+      {t:"<strong>Grilles tarifaires</strong> manuelles en attendant."},
+    ]:[
+      {t:"<strong>Qualifier avec le client</strong> la disponibilit\u00e9 des WS sur sa version locale."},
+      {t:"<strong>Cadrage projet</strong> avec l\u2019\u00e9quipe technique WYZ."},
+      {t:"<strong>Grilles tarifaires</strong> manuelles en attendant."},
+    ],
+    wsCosts:(q4)=>q4==='OnPrem'?[{type:'dms',label:'Co\u00fbt DMS',value:"Co\u00fbt potentiel Everlog selon d\u00e9veloppement n\u00e9cessaire."}]:[{type:'free',label:'Co\u00fbt DMS',value:"\u00c0 confirmer avec Everlog (SaaS)."}],
+  },
+  ADP:{ws:'amber',wsTitle:"WS Keyloop disponibles \u2014 co\u00fbt \u00e9lev\u00e9",wsSummary:"WS Keyloop fonctionnels mais tr\u00e8s on\u00e9reux. Validation direction commerciale WYZ obligatoire. D\u00e9lai important.",wsAllows:['Disponibilit\u00e9s temps r\u00e9el','Prix personnalis\u00e9s','Prise de commande'],wsNotAllows:[],
+    wsSteps:()=>[
+      {t:"\u26a0 <strong>Valider avec la direction commerciale WYZ</strong> avant tout engagement."},
+      {t:"<strong>Cadrage projet WS Keyloop</strong> avec d\u00e9lai important."},
+    ],
+    wsCosts:()=>[{type:'dms',label:'Co\u00fbt DMS',value:"WS Keyloop tr\u00e8s on\u00e9reux \u2014 tarif \u00e0 obtenir aupr\u00e8s d\u2019ADP/Keyloop."}],
+  },
+  Autre:{ws:'blue',wsTitle:"\u00c0 qualifier",wsSummary:"DMS non r\u00e9f\u00e9renc\u00e9. V\u00e9rifier l\u2019existence de WS et documenter pour l\u2019\u00e9quipe WYZ.",wsAllows:[],wsNotAllows:[],
+    wsSteps:()=>[{t:"<strong>Demander la documentation technique</strong> au client."},{t:"<strong>Transmettre \u00e0 l\u2019\u00e9quipe WYZ</strong> pour \u00e9valuation."},{t:"<strong>Grilles tarifaires</strong> manuelles en attendant."}],
+    wsCosts:()=>[{type:'ext',label:'Co\u00fbt WYZ',value:"\u00c0 chiffrer selon r\u00e9sultat qualification WS."}],
+  },
+};
+
+const WS_STATUS={green:{icon:'\u2713',label:'WebServices disponibles'},orange:{icon:'\u25d0',label:'WebServices partiels / en cours'},red:{icon:'\u2715',label:'Pas de WebServices'},blue:{icon:'?',label:'\u00c0 qualifier'},amber:{icon:'\u26a0',label:'Validation commerciale requise'}};
+
+/* STATE */
+const state={product:null,vpn:null,dms:null,q4:null,techRef:null,ref:null};
+const isRedis=()=>state.product==='WTBRedis';
+
+function pick(step,btn){
+  btn.closest('.choices').querySelectorAll('.ch').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+  const val=btn.dataset.val;
+  if(step===1){state.product=val;resetFrom(2);unlock(2);buildDMSList();}
+  else if(step===2){state.vpn=val;resetFrom(3);unlock(3);}
+  else if(step===3){
+    state.dms=val;resetFrom(4);
+    const specQ=isRedis()?SPECIFIC_Q[val]:null;
+    if(specQ){setupQ4(specQ);showStep(4);unlock(4);}
+    else{
+      hideStep(4);
+      if(NEEDS_TECH.includes(val)){showStep(5);unlock(5);}
+      else{hideStep(5);unlock(6);}
+    }
+    renumber();
+  }
+  else if(step===4){
+    state.q4=val;resetFrom(5);
+    if(NEEDS_TECH.includes(state.dms)){showStep(5);unlock(5);}
+    else{hideStep(5);unlock(6);}
+    renumber();
+  }
+  else if(step===5){state.techRef=val;unlock(6);renumber();}
+  else if(step===6){state.ref=val;document.getElementById('btnGo').disabled=false;}
+}
+
+function buildDMSList(){
+  const list=isRedis()?DMS_LIST.redis:DMS_LIST.simple;
+  document.getElementById('c3').innerHTML=list.map(d=>
+    `<button class="ch" data-val="${d.val}" onclick="pick(3,this)">${d.name}${d.sub?`<span class="ch-sub">${d.sub}</span>`:''}</button>`
+  ).join('');
+}
+
+function setupQ4(q){
+  document.getElementById('q4-q').textContent=q.q;
+  document.getElementById('q4-hint').textContent=q.hint||'';
+  document.getElementById('c4').innerHTML=q.opts.map(o=>`<button class="ch" data-val="${o.val}" onclick="pick(4,this)">${o.label}</button>`).join('');
+}
+
+function renumber(){
+  let n=4;
+  [4,5,6].forEach(id=>{
+    const el=document.getElementById('q'+id);
+    if(!el.classList.contains('hidden')){
+      const ne=document.getElementById('num'+id);
+      if(ne)ne.textContent=n++;
+    }
+  });
+}
+
+function resetFrom(id){
+  for(let i=id;i<=6;i++){
+    lock(i);unselectAll(i);
+    if(i===4){hideStep(4);state.q4=null;}
+    if(i===5){hideStep(5);state.techRef=null;}
+    if(i===6)state.ref=null;
+  }
+  document.getElementById('btnGo').disabled=true;
+  document.getElementById('result').classList.remove('show');
+}
+function lock(n){document.getElementById('q'+n)?.classList.add('locked')}
+function unlock(n){document.getElementById('q'+n)?.classList.remove('locked')}
+function showStep(n){document.getElementById('q'+n)?.classList.remove('hidden')}
+function hideStep(n){document.getElementById('q'+n)?.classList.add('hidden')}
+function unselectAll(n){document.getElementById('c'+n)?.querySelectorAll('.ch').forEach(b=>b.classList.remove('sel'))}
+
+function resetAll(){
+  Object.keys(state).forEach(k=>state[k]=null);
+  for(let i=1;i<=6;i++)unselectAll(i);
+  lock(2);lock(3);lock(4);lock(5);lock(6);
+  hideStep(4);hideStep(5);
+  [4,5,6].forEach(i=>{const e=document.getElementById('num'+i);if(e)e.textContent=i;});
+  document.getElementById('btnGo').disabled=true;
+  document.getElementById('result').innerHTML='';
+  document.getElementById('result').classList.remove('show');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* RENDER */
+function showResult(){
+  const ftpDb=FTP_DB[state.dms];
+  const wsDb=isRedis()?WS_DB[state.dms]:null;
+  if(!ftpDb)return;
+  const refWarn=state.ref==='N';
+  const prodLabel={WTC:'Wyz Tyre Check',WTB:'WTB Achat / Devis',WTBRedis:'WTB Redistribution'}[state.product];
+
+  const vpnHTML=state.vpn==='Y'?blk('neutral','\u26a0','Point de vigilance','VPN n\u00e9cessaire',
+    al('warn','\u26a0',"La mise en place d\u2019un VPN n\u00e9cessite un <strong>cadrage projet sp\u00e9cifique</strong>. Pr\u00e9voir co\u00fbt et d\u00e9lai suppl\u00e9mentaires. Escalader \u00e0 l\u2019\u00e9quipe technique WYZ.")):'' ;
+
+  const wsHTML=wsDb?(()=>{
+    const st=WS_STATUS[wsDb.ws];
+    const allow=wsDb.wsAllows.length?`<ul class="ws-cap-list">${wsDb.wsAllows.map(c=>`<li data-i="\u2713">${c}</li>`).join('')}</ul>`:'';
+    const notAllow=wsDb.wsNotAllows.length?`<div class="ws-cap-box"><div class="ws-cap-label">\u2715 Ne permet pas</div><ul class="ws-cap-list">${wsDb.wsNotAllows.map(c=>`<li data-i="\u2715">${c}</li>`).join('')}</ul></div>`:'';
+    return blk(wsDb.ws,st.icon,`WebServices \u00b7 ${st.label}`,wsDb.wsTitle,`
+      <p class="rsummary">${wsDb.wsSummary}</p>
+      ${allow||notAllow?`<div class="ws-caps">${allow?`<div class="ws-cap-box"><div class="ws-cap-label">\u2713 Ce que permettent les WS</div>${allow}</div>`:''}${notAllow}</div>`:''}
+      ${stps(wsDb.wsSteps(state.q4))}
+      ${csts(wsDb.wsCosts(state.q4))}
+    `);
+  })():'';
+
+  const ftpNote=isRedis()?al('info','\u2139',"M\u00eame avec des WS actifs, le Stock Report SFTP est <strong>obligatoire</strong> pour pallier aux lenteurs ou indisponibilit\u00e9s du DMS."):'';
+  const techOK=state.techRef==='Y'?al('ok','\u2713',"<strong>R\u00e9f\u00e9rent technique disponible.</strong> Un cadrage avec ce r\u00e9f\u00e9rent et l\u2019\u00e9quipe projet WYZ est la premi\u00e8re \u00e9tape."):'';
+  const techKO=state.techRef==='N'?al('warn','\u26a0',"<strong>Pas de ressource interne.</strong> Le client devra faire appel \u00e0 un prestataire externe. WYZ peut l\u2019orienter mais co\u00fbt et maintenance restent \u00e0 sa charge."):'';
+  const refW=refWarn?al('warn','\u26a0',"<strong>R\u00e9f\u00e9rentiel non standard.</strong> Le client doit changer sa fa\u00e7on de saisir les r\u00e9f\u00e9rences avant de commencer le projet \u2014 EAN manufacturier ou r\u00e9f\u00e9rence constructeur requis. Pas de lignes vides."):'';
+
+  const stockHTML=blk(ftpDb.ftp,'\u2191',`Stock Report SFTP \u00b7 ${prodLabel}`,ftpDb.ftpTitle,`
+    <p class="rsummary">${ftpDb.ftpSummary}</p>
+    ${ftpNote}
+    ${ar('Action WYZ',ftpDb.actionWYZ)}
+    ${techOK}${techKO}${refW}
+    ${stps(ftpDb.ftpSteps(state))}
+    ${ffmt()}
+    ${csts(ftpDb.ftpCosts(state))}
+  `);
+
+  const result=document.getElementById('result');
+  result.innerHTML=vpnHTML+wsHTML+stockHTML;
+  result.classList.add('show');
+  setTimeout(()=>result.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+}
+
+function blk(color,icon,ey,title,body){return`<div class="rblock ${color}"><div class="rblock-head"><div class="rblock-icon">${icon}</div><div><div class="rblock-eyebrow">${ey}</div><div class="rblock-title">${title}</div></div></div><div class="rblock-body">${body}</div></div>`}
+function al(type,icon,msg){return`<div class="alert ${type}"><div class="alert-icon">${icon}</div><div>${msg}</div></div>`}
+function ar(label,val){return`<div class="action-row"><div class="al">${label}</div><div class="av">${val}</div></div>`}
+function stps(steps){return`<div><div class="steps-label">\u00c9tapes</div>${steps.map((s,i)=>`<div class="step-row"><div class="step-n">${i+1}</div><div class="step-t">${s.t}</div></div>`).join('')}</div>`}
+function csts(costs){return`<div><div class="steps-label">Co\u00fbts</div><div class="costs-grid">${costs.map(c=>`<div class="cost-box ${c.type}"><div class="cost-label">${c.label}</div><div class="cost-value">${c.value}</div></div>`).join('')}</div></div>`}
+function ffmt(){return`<div class="ff-box"><strong>Format du fichier stock attendu</strong><div class="ff-tags"><span class="ff-tag">CSV</span><span class="ff-tag">2 colonnes</span><span class="ff-tag">1 fichier / PDV</span><span class="ff-tag">Toutes les heures</span></div>Colonne 1 : <strong>R\u00e9f\u00e9rence article</strong> (EAN, CAI ou ref constructeur) \u2014 Pas de ref vide<br>Colonne 2 : <strong>Quantit\u00e9 en stock</strong> au moment du d\u00e9p\u00f4t<br>Nommage : \u00e0 convenir avec WYZ lors du param\u00e9trage SFTP</div>`}
+</script>
+</body>
+</html>
