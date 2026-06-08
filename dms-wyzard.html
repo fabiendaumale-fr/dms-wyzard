@@ -69,14 +69,15 @@
       color: var(--ink);
     }
     .hdr h1 .accent { color: var(--muted); font-weight: 400; }
-    .hdr-tags { display: flex; gap: 6px; margin-top: 14px; flex-wrap: wrap; }
+    .hdr-tags { display: flex; gap: 0; margin-top: 10px; flex-wrap: wrap; align-items: center; }
     .hdr-tag {
-      font-family: var(--fm); font-size: 11px; font-weight: 500;
-      padding: 3px 10px; border-radius: 5px;
-      background: var(--ink); color: var(--bg);
-      letter-spacing: .03em;
+      font-family: var(--fm); font-size: 12px; font-weight: 500;
+      color: var(--ink); letter-spacing: .02em;
+      cursor: default; user-select: none; pointer-events: none;
     }
-    .hdr-tag.outline { background: transparent; color: var(--muted); border: 1px solid var(--border2); }
+    .hdr-tag::before { content: "— "; color: var(--border2); }
+    .hdr-tag:first-child::before { display: none; }
+    .hdr-tag.outline { color: var(--muted); }
 
     /* ── WIZARD CARD ── */
     .wizard {
@@ -262,6 +263,9 @@
     }
     .step-t { font-size: 13px; line-height: 1.65; color: var(--ink2); }
     .step-t strong { color: var(--ink); font-weight: 600; }
+    .step-blocking { background: rgba(139,26,26,.04); border-radius: 8px; margin: 0 -4px; padding: 9px 4px; border-bottom: 1px solid var(--red-b) !important; }
+    .steps-toggle { margin-top: 10px; background: none; border: 1px solid var(--border2); border-radius: 7px; padding: 5px 12px; font-family: var(--ff); font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all .15s; }
+    .steps-toggle:hover { color: var(--ink); border-color: var(--ink); }
 
     /* Costs */
     .costs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -289,8 +293,10 @@
     /* File format */
     .ff-box { padding: 12px 14px; border-radius: 9px; background: rgba(0,0,0,.03); border: 1px solid rgba(0,0,0,.06); font-size: 12px; line-height: 1.75; color: var(--ink2); }
     .ff-box strong { color: var(--ink); }
-    .ff-tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 7px 0 9px; }
-    .ff-tag { font-family: var(--fm); font-size: 11px; padding: 2px 8px; border-radius: 5px; background: var(--ink); color: #fff; }
+    .ff-tags { display: flex; gap: 4px; flex-wrap: wrap; margin: 6px 0 8px; align-items: center; }
+    .ff-tag { font-family: var(--fm); font-size: 11px; color: var(--muted); cursor: default; user-select: none; pointer-events: none; }
+    .ff-tag::after { content: " ·"; margin-left: 4px; color: var(--border2); }
+    .ff-tag:last-child::after { display: none; }
 
     /* Nav */
     .nav { display: flex; gap: 16px; justify-content: center; margin-top: 32px; }
@@ -448,6 +454,7 @@ const DMS_LIST = {
     {val:'DCS',      name:'Reynolds',  sub:'DCS Net'},
     {val:'Nextlane', name:'Nextlane',  sub:"I'Car, Datacar, Eris, Ericauto…"},
     {val:'Incadea',  name:'Incadea'},
+    {val:'Carbase',  name:'Carbase'},
     {val:'Everlog',  name:'Everlog'},
     {val:'CDK',      name:'Keyloop',   sub:'CDK, ADP, EVA…'},
     {val:'Autre',    name:'Autre DMS'},
@@ -670,7 +677,7 @@ function pick(step, btn) {
   } else if (step === 2) {
     state.dms = val;
     resetFrom(3);
-    const specQ = isRedis() ? SPECIFIC_Q[val] : null;
+    const specQ = (isRedis() || val === 'Everlog') ? SPECIFIC_Q[val] : null;
     if (specQ) { setupQ3(specQ); showStep(3); unlock(3); }
     else {
       hideStep(3);
@@ -823,8 +830,17 @@ function showResult() {
         <p class="rsummary">${ftpDb.ftpSummary}</p>
         ${ftpNote}
         ${aw('Action WYZ', ftpDb.actionWYZ)}
-        ${techOK}${techKO}${refW}
-        ${stps(ftpDb.ftpSteps(state))}
+        ${techOK}${techKO}
+        ${stps((()=>{
+          const steps = ftpDb.ftpSteps(state);
+          if(state.ref === 'N'){
+            return [
+              {t: '<strong>Le client doit utiliser un référentiel EAN, CAI ou référence constructeur.</strong> Son référentiel actuel n’est pas compatible. Il doit changer sa façon de saisir les références avant de commencer le projet. Pas de lignes vides.'},
+              ...steps
+            ];
+          }
+          return steps;
+        })())}
         ${ffmt()}
         ${csts(ftpDb.ftpCosts(state))}
       `)}
@@ -842,7 +858,22 @@ function blk(color,icon,ey,title,body){
 }
 function al(type,icon,msg){return`<div class="alert ${type}"><div class="alert-icon">${icon}</div><div>${msg}</div></div>`;}
 function aw(lbl,val){return`<div class="action-wyz"><div class="action-wyz-lbl">${lbl}</div><div class="action-wyz-val">${val}</div></div>`;}
-function stps(steps){return`<div class="steps-wrap"><div class="steps-hd">Étapes</div>${steps.map((s,i)=>`<div class="step-row"><div class="step-n">${i+1}</div><div class="step-t">${s.t}</div></div>`).join('')}</div>`;}
+function stps(steps){
+  if(!steps||!steps.length) return '';
+  // D\u00e9tecter si \u00e9tape 1 est bloquante (presta externe ou r\u00e9f\u00e9rentiel)
+  const blocking = steps[0] && (
+    steps[0].t.includes('prestataire externe') ||
+    steps[0].t.includes('r\u00e9f\u00e9rentiel EAN') ||
+    steps[0].t.includes('contact technique identifi\u00e9')
+  );
+  const uid = 'stps_'+ Math.random().toString(36).slice(2,7);
+  if(blocking && steps.length > 1){
+    const first = `<div class="step-row step-blocking"><div class="step-n">1</div><div class="step-t">${steps[0].t}</div></div>`;
+    const rest = steps.slice(1).map((s,i)=>`<div class="step-row"><div class="step-n">${i+2}</div><div class="step-t">${s.t}</div></div>`).join('');
+    return `<div class="steps-wrap"><div class="steps-hd">\u00c9tapes</div>${first}<div class="steps-more" id="${uid}" style="display:none">${rest}</div><button class="steps-toggle" onclick="this.previousElementSibling.style.display=this.previousElementSibling.style.display==='none'?'block':'none';this.textContent=this.textContent.includes('En savoir')?'Masquer les \u00e9tapes suivantes':'En savoir plus \u2192'">En savoir plus \u2192</button></div>`;
+  }
+  return `<div class="steps-wrap"><div class="steps-hd">\u00c9tapes</div>${steps.map((s,i)=>`<div class="step-row"><div class="step-n">${i+1}</div><div class="step-t">${s.t}</div></div>`).join('')}</div>`;
+}
 function csts(costs){return`<div><div class="steps-hd">Coûts</div><div class="costs-grid">${costs.map(c=>`<div class="cost-box ${c.type}"><div class="cost-lbl">${c.label}</div><div class="cost-val">${c.value}</div></div>`).join('')}</div></div>`;}
 function ffmt(){return`<div class="ff-box"><strong>Format du fichier stock attendu</strong><div class="ff-tags"><span class="ff-tag">CSV</span><span class="ff-tag">2 colonnes</span><span class="ff-tag">1 fichier / PDV</span><span class="ff-tag">Toutes les heures</span></div>Colonne 1 : <strong>Référence article</strong> (EAN, CAI ou ref constructeur) — Pas de ref vide<br>Colonne 2 : <strong>Quantité en stock</strong> au moment du dépôt<br>Nommage : à convenir avec WYZ lors du paramétrage SFTP</div>`;}
 </script>
