@@ -310,11 +310,7 @@
   <div class="tbar-divider"></div>
   <span class="tbar-section">Flux Stock &amp; Interfaces</span>
   <div class="tbar-sep"></div>
-  <div class="tbar-links">
-    <a class="tbar-link" href="index.html">Wizard DMS</a>
-    <a class="tbar-link" href="editor.html">&#201;diteur</a>
-    <a class="tbar-link" href="tree.html">Arbre</a>
-  </div>
+
 </header>
 
 <div class="shell">
@@ -475,7 +471,7 @@ const DMS_LIST = {
 const NEEDS_TECH = new Set(['Nextlane','ICarNextlane','DatacarNextlane','EricautoNextlane','WinProPieces','WinProPneu','Incadea','Carbase','Autre']);
 
 /* DMS avec WS (la question VPN ne s’affiche que pour ceux-là en mode Redis) */
-const HAS_WS = new Set(['DCSNet','ICarNextlane','DatacarNextlane','WinProPieces','WinProPneu','Everlog','ADP','Autre']);
+const HAS_WS = new Set(['DCSNet','ICarNextlane','DatacarNextlane','WinProPieces','WinProPneu']);
 
 /* Questions spécifiques DMS (uniquement WTBRedis) */
 const SPECIFIC_Q = {
@@ -488,6 +484,11 @@ const SPECIFIC_Q = {
     q: "Le client est-il en version SaaS ou On-Premises (installé localement) ?",
     hint: "Détermine la disponibilité des WebServices.",
     opts: [{val:'SaaS',label:'SaaS — hébergé par Everlog'},{val:'OnPrem',label:'On-Premises — installé en local'}]
+  },
+  EverlogOnPrem: {
+    q: "Le client dispose-t-il d’un contact technique Everlog (intégrateur, technicien interne ou référent chez Everlog) ?",
+    hint: "Si oui, on pourra explorer la mise en place d’un connecteur WS sur la version locale.",
+    opts: [{val:'Y',label:'Oui — contact technique disponible'},{val:'N',label:'Non — pas de contact technique'}]
   },
 };
 
@@ -622,9 +623,23 @@ const WS_DB = {
   Carbase:{ws:'red',wsTitle:"Pas de WebServices connus",wsSummary:"Aucun WS connu pour Carbase. Stock Report uniquement.",wsAllows:[],wsNot:["WS non disponibles à notre connaissance"],
     wsSteps:()=>[{t:"<strong>Informer le client.</strong>"},{t:"<strong>Grilles tarifaires</strong> à configurer manuellement dans WYZ."}],
     wsCosts:()=>[{type:'free',label:'Coût DMS',value:"Aucun."}]},
-  Everlog:{ws:'orange',wsTitle:"WebServices selon version",wsSummary:"SaaS : pas d’offre WS connue. On-Premises : WS possiblement disponibles ou développables — cadrage requis.",wsAllows:[],wsNot:[],
-    wsSteps:(q)=>q==='SaaS'?[{t:"<strong>Pas d’offre WS SaaS connue</strong> — le client peut se renseigner auprès d’Everlog."},{t:"<strong>Grilles tarifaires</strong> manuelles en attendant."}]:[{t:"<strong>Qualifier avec le client</strong> la disponibilité des WS sur sa version locale."},{t:"<strong>Cadrage projet</strong> avec l’équipe technique WYZ."},{t:"<strong>Grilles tarifaires</strong> manuelles en attendant."}],
-    wsCosts:(q)=>q==='OnPrem'?[{type:'dms',label:'Coût DMS',value:"Coût potentiel Everlog selon développement."}]:[{type:'free',label:'Coût DMS',value:"À confirmer avec Everlog."}]},
+  Everlog:{ws:'orange',wsTitle:"WebServices selon version",
+    wsSummary(q,et){
+      if(q==='SaaS') return "Version SaaS : pas d’offre WS connue à ce jour. Le client peut se renseigner auprès d’Everlog.";
+      if(et==='Y')   return "Version On-Premises avec contact technique disponible : on peut explorer la mise en place d’un connecteur WS sur la version locale.";
+      return "Version On-Premises sans contact technique identifié : la mise en place d’un WS nécessiterait un cadrage projet spécifique.";
+    },
+    wsAllows:[],wsNot:[],
+    wsSteps(q,et){
+      if(q==='SaaS') return [{t:"<strong>Informer le client</strong> : pas d’offre WS SaaS connue chez Everlog à ce jour."},{t:"<strong>Le client peut se renseigner</strong> auprès d’Everlog."},{t:"<strong>Grilles tarifaires</strong> manuelles en attendant."}];
+      if(et==='Y')   return [{t:"<strong>Mettre en contact le référent technique Everlog</strong> avec l’équipe WYZ pour explorer les options de connecteur WS."},{t:"<strong>Cadrage technique</strong> : accès API ou base locale, protocole, authentification."},{t:"<strong>Grilles tarifaires</strong> manuelles en attendant la qualification."}];
+      return [{t:"<strong>Aucun contact technique identifié</strong> : un connecteur WS ne peut pas être mis en place sans interlocuteur technique Everlog."},{t:"<strong>Grilles tarifaires</strong> à configurer manuellement dans WYZ."},{t:"<strong>Option</strong> : si le client trouve un contact technique Everlog, revenir sur ce point."}];
+    },
+    wsCosts(q,et){
+      if(q==='SaaS') return [{type:'free',label:'Coût DMS',value:"À confirmer avec Everlog (SaaS)."}];
+      if(et==='Y')   return [{type:'dms',label:'Coût DMS',value:"Coût potentiel Everlog selon les options de connecteur disponibles."}];
+      return [{type:'free',label:'Coût DMS',value:"Aucun coût à prévoir — pas de WS possible sans contact technique."}];
+    }},
   ADP:{ws:'amber',wsTitle:"WS Keyloop disponibles — coût élevé",wsSummary:"WS Keyloop fonctionnels mais très onéreux. Validation direction commerciale WYZ obligatoire. Délai important.",wsAllows:['Disponibilités temps réel','Prix personnalisés','Prise de commande'],wsNot:[],
     wsSteps:()=>[{t:"⚠ <strong>Valider avec la direction commerciale WYZ</strong> avant tout engagement."},{t:"<strong>Cadrage projet WS Keyloop.</strong>"}],
     wsCosts:()=>[{type:'dms',label:'Coût DMS',value:"WS Keyloop très onéreux — tarif à obtenir. Délai important."}]},
@@ -637,7 +652,7 @@ const WS_STATUS={green:{icon:'✓',lbl:'WebServices disponibles'},orange:{icon:'
 /* ============================================================
    STATE & WIZARD LOGIC
    ============================================================ */
-const state = {product:null, dms:null, q3:null, techRef:null, ref:null, vpn:null};
+const state = {product:null, dms:null, q3:null, everlogTech:null, techRef:null, ref:null, vpn:null};
 const isRedis = () => state.product === 'WTBRedis';
 const dmsHasWS = () => isRedis() && HAS_WS.has(state.dms);
 
@@ -665,7 +680,21 @@ function pick(step, btn) {
     renumber();
 
   } else if (step === 3) {
-    state.q3 = val;
+    // Cas spécial : Everlog OnPrem => poser la question contact tech en Q3
+    if (state.dms === 'Everlog' && state.q3 === null && (val === 'SaaS' || val === 'OnPrem')) {
+      state.q3 = val;
+      if (val === 'OnPrem') {
+        // Réafficher Q3 avec la question contact technique
+        setupQ3(SPECIFIC_Q.EverlogOnPrem);
+        // Ne pas passer à Q4 encore - attendre réponse contact tech
+        return;
+      }
+    } else if (state.dms === 'Everlog' && state.q3 === 'OnPrem') {
+      // Deuxième réponse : contact tech
+      state.everlogTech = val;
+    } else {
+      state.q3 = val;
+    }
     resetFrom(4);
     if (NEEDS_TECH.has(state.dms)) { showStep(4); unlock(4); }
     else { hideStep(4); unlock(5); }
@@ -716,7 +745,7 @@ function renumber() {
 function resetFrom(id) {
   for (let i=id; i<=6; i++) {
     lock(i); unselectAll(i);
-    if (i===3){hideStep(3);state.q3=null;}
+    if (i===3){hideStep(3);state.q3=null;state.everlogTech=null;}
     if (i===4){hideStep(4);state.techRef=null;}
     if (i===6){hideStep(6);state.vpn=null;}
     if (i===5) state.ref=null;
@@ -732,7 +761,7 @@ const hideStep = n => document.getElementById('q'+n)?.classList.add('hidden');
 const unselectAll = n => document.getElementById('c'+n)?.querySelectorAll('.ch').forEach(b=>b.classList.remove('sel'));
 
 function resetAll() {
-  Object.keys(state).forEach(k=>state[k]=null);
+  Object.keys(state).forEach(k=>state[k]=null); // everlogTech inclus
   for(let i=1;i<=6;i++) unselectAll(i);
   lock(2);lock(3);lock(4);lock(5);lock(6);
   hideStep(3);hideStep(4);hideStep(6);
@@ -773,11 +802,11 @@ function showResult() {
       <div class="res-section">
         <div class="res-section-label">WebServices</div>
         ${blk(wsDb.ws, st.icon, `WebServices · ${st.lbl}`, wsDb.wsTitle, `
-          <p class="rsummary">${wsDb.wsSummary}</p>
+          <p class="rsummary">${typeof wsDb.wsSummary==='function' ? wsDb.wsSummary(state.q3, state.everlogTech) : wsDb.wsSummary}</p>
           ${vpnWarn}
           ${allow||notAllow?`<div class="ws-caps">${allow?`<div class="ws-cap-box"><div class="ws-cap-lbl">✓ Ce que permettent les WS</div>${allow}</div>`:''}${notAllow}</div>`:''}
-          ${stps(wsDb.wsSteps(state.q3))}
-          ${csts(wsDb.wsCosts(state.q3))}
+          ${stps(typeof wsDb.wsSteps==='function' ? wsDb.wsSteps(state.q3, state.everlogTech) : wsDb.wsSteps)}
+          ${csts(typeof wsDb.wsCosts==='function' ? wsDb.wsCosts(state.q3, state.everlogTech) : wsDb.wsCosts)}
         `)}
       </div>`;
   }
