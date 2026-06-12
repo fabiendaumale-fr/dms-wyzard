@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<h,{t:'<strong>WYZ Sales Connect</strong> configure l’import des fichiers en récupérant le mapping fichier/PDV.'}port" content="width=device-width, initial-scale=1">
   <title>DMS Wyzard — Flux Stock & Interfaces</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -581,13 +579,11 @@ const ftpStepsNT = (name, s) => s.techRef === 'Y' ? [
   {t:'<strong>WYZ Sales Connect</strong> crée le SFTP et communique les accès.'},
   {t:`<strong>Le référent crée le script</strong> de connexion à la base ${name} et d’export automatique vers le SFTP. WYZ IT</strong> peut assister à la création du script et la planification.`},
   {t:'<strong>Planifier l’export toutes les heures</strong> (cron, planificateur Windows…).'},
-  {t:'<strong>Valider le format</strong> : 1 fichier par PDV, 2 colonnes CSV, nommage convenu.'},
+  {t:'<strong>Valider le format</strong> : 1 fichier par PDV, 2 colonnes CSV, nommage convenu.'},{t:'<strong>WYZ Sales Connect</strong> configure l’import des fichiers en récupérant le mapping fichier/PDV.'},
 ] : [
   {t:'<strong>Le client identifie un prestataire externe</strong> capable de se connecter à sa base. <strong>WYZ IT</strong> peut orienter vers Prime Labs (Oussama Abida) pour la mise en place initiale et la maintenance. Coût et maintenance restent à la charge du client.'},
   {t:'<strong>WYZ Sales Connect</strong> crée le SFTP dès que le prestataire est identifié.'},
-  {t:'<strong>Le prestataire crée le script</strong> d’export automatique vers le SFTP.'},
-  {t:'<strong>Planifier l’export toutes les heures</strong>.'},
-  {t:'<strong>Valider le format</strong> : 1 fichier par PDV, 2 colonnes CSV.'},
+  {t:'<strong>Le prestataire crée le script</strong> d’export automatique vers le SFTP.'},{t:"<strong>WYZ Sales Connect</strong> configure l’import des fichiers en récupérant le mapping fichier/PDV."},
 ];
 
 const ftpCostsNT = (s) => [
@@ -606,7 +602,7 @@ const FTP_DB = {
       {t:'<strong>WYZ Sales Connect</strong> crée le SFTP et communique les accès (hôte, identifiants, nommage de fichier).'},
       {t:'<strong>Le client configure le requêteur natif DCS</strong> pour exporter en CSV, toutes les heures.'},
       {t:'<strong>Si le client ne maîtrise pas le requêteur</strong>, <strong>WYZ Sales Connect</strong> peut envoyer le lien vers la formation au requêteur MPR : <a href="https://catalogue.reyrey.fr/formation/24/formation-requeteur-pr" target="_blank">catalogue.reyrey.fr</a>'},
-      {t:'<strong>Valider le format</strong> : 1 fichier par PDV, 2 colonnes CSV.'},
+      {t:'<strong>Valider le format</strong> : 1 fichier par PDV, 2 colonnes CSV.'},{t:"<strong>WYZ Sales Connect</strong> configure l’import des fichiers en récupérant le mapping fichier/PDV."},
     ],
     ftpCosts:()=>[{type:'wyz',label:'Coût WYZ',value:"Inclus dans l’offre commerciale"},{type:'free',label:'Coût externe',value:"Pas de coût DCS."}],
   },
@@ -666,7 +662,7 @@ FTP_DB.DCSNet={...FTP_DB.DCS,ftpSteps:()=>[
   {t:'<strong>WYZ Sales Connect</strong> crée le SFTP et communique les accès.'},
   {t:'<strong>Le client configure le requêteur natif DCS</strong> pour exporter en CSV, toutes les heures.'},
   {t:'<strong>Si besoin</strong>, WYZ peut assister à la création de la requête.'},
-  {t:'<strong>Valider le format</strong>.'},
+  {t:'<strong>Valider le format</strong>.'},{t:"<strong>WYZ Sales Connect</strong> configure l’import des fichiers en récupérant le mapping fichier/PDV."}
 ]};
 FTP_DB.ICarNextlane={...FTP_DB.Nextlane};
 FTP_DB.DatacarNextlane={...FTP_DB.Nextlane};
@@ -897,7 +893,7 @@ function showResult() {
 
   // ─── Bloc Stock Report ───
   const techOK = state.techRef==='Y' ? al('ok','✓',"<strong>Référent technique disponible.</strong> Un cadrage avec ce référent et l’équipe projet WYZ est la première étape.") : '';
-  const techKO = state.techRef==='N' ? al('warn','⚠',"<strong>Pas de ressource interne.</strong> Le client devra faire appel à un prestataire externe. WYZ peut l’orienter mais coût et maintenance restent à sa charge.") : '';
+  const techKO = ''; // géré globalement par le bloc warning prioritaire
   const refW = ''; // géré globalement par le bloc référentiel prioritaire
 
   const stockHTML = `
@@ -942,6 +938,30 @@ function showResult() {
       ${wsHTML}${stockHTML}
     </div>`;
     result.innerHTML = refBlock;
+  } else if (state.techRef === 'N') {
+    const uid2 = 'tech_' + Math.random().toString(36).slice(2,6);
+    const techBlock = `<div class="rblock orange" style="margin-bottom:0">
+      <div class="rblock-head">
+        <div class="rblock-status">⚠</div>
+        <div class="rblock-titles">
+          <div class="rblock-eyebrow">Point d’attention — Action nécessaire</div>
+          <div class="rblock-title">Ressource technique à identifier</div>
+        </div>
+      </div>
+      <div class="rblock-body">
+        <p class="rsummary"><strong>Le client doit identifier une ressource technique.</strong> WYZ peut éventuellement orienter vers <strong>Oussama Abida de Prime Labs</strong> pour un devis.</p>
+        <button class="steps-toggle" onclick="
+          const el=document.getElementById('${uid2}');
+          const open=el.style.display!=='none';
+          el.style.display=open?'none':'flex';
+          this.textContent=open?'Voir quand même la procédure →':'Masquer la procédure';
+        ">Voir quand même la procédure →</button>
+      </div>
+    </div>
+    <div id="${uid2}" style="display:none;flex-direction:column;gap:12px;margin-top:12px">
+      ${wsHTML}${stockHTML}
+    </div>`;
+    result.innerHTML = techBlock;
   } else {
     result.innerHTML = wsHTML + stockHTML;
   }
